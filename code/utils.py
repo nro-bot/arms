@@ -40,3 +40,28 @@ def update_opencv_window(image):
 def depth_image_to_colormap(image):
 
     return cv2.applyColorMap(cv2.convertScaleAbs(image, alpha=0.03), cv2.COLORMAP_JET)
+
+
+def convert_gray(img):
+
+    return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+
+
+def transformation_matrix(rvec, tvec):
+
+    mat = np.zeros((4, 4), dtype=np.float32)
+    mat[: 3, 3] = tvec.flatten()
+    mat[: 3, : 3] = cv2.Rodrigues(rvec)[0]
+    mat[3, 3] = 1.
+    return mat
+
+
+def inverse_transformation_matrix(rvec, tvec):
+
+    mat = np.zeros((4, 4), dtype=np.float32)
+    rot_mat = cv2.Rodrigues(rvec)[0]
+    inv_rot_mat = rot_mat.T
+    mat[: 3, 3] = - np.dot(inv_rot_mat, tvec[:, 0])
+    mat[: 3, : 3] = inv_rot_mat
+    mat[3, 3] = 1.
+    return mat
