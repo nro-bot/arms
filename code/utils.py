@@ -65,3 +65,40 @@ def inverse_transformation_matrix(rvec, tvec):
     mat[: 3, : 3] = inv_rot_mat
     mat[3, 3] = 1.
     return mat
+
+
+def coord_transform(transform_mtx, pts):
+
+    if len(pts.shape) == 1:
+        pts = pts[None, :]
+
+    homog_pts = np.concatenate([pts, np.ones((len(pts), 1))], axis=1)
+    new_homog_pts = np.dot(transform_mtx, homog_pts.T).T
+    new_pts = np.true_divide(new_homog_pts[:, :-1], new_homog_pts[:, [-1]])
+    return new_pts
+
+
+def draw_square(img: np.ndarray, x: int, y: int, square_size=20, copy=False):
+
+    size = square_size // 2
+    x_limits = [x - size, x + size]
+    y_limits = [y - size, y + size]
+    for i in range(len(x_limits)):
+        x_limits[i] = min(img.shape[0], max(0, x_limits[i]))
+    for i in range(len(y_limits)):
+        y_limits[i] = min(img.shape[1], max(0, y_limits[i]))
+
+    if copy:
+        img = np.array(img, dtype=img.dtype)
+
+    if img.dtype == np.uint8:
+        img[x_limits[0]: x_limits[1], y_limits[0]: y_limits[1]] = 255
+    else:
+        img[x_limits[0]: x_limits[1], y_limits[0]: y_limits[1]] = 1.
+
+    return img
+
+
+def cv_coords_to_np(x, y):
+
+    return y, x

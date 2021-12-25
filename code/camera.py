@@ -16,7 +16,7 @@ class Camera:
 
 		pass
 
-	def calc_location(self):
+	def calc_location(self, show=False):
 
 		gh, gw = (9, 7)
 		gsize = 0.021
@@ -25,6 +25,9 @@ class Camera:
 		gray_image = utils.convert_gray(color_image)
 		ret, corners = cv2.findChessboardCorners(gray_image, (gh, gw), None)
 
+		if show:
+			self.show_corners_(gray_image, corners)
+
 		if not ret:
 			raise exceptions.CheckerboardNotFound()
 
@@ -32,12 +35,23 @@ class Camera:
 		objp[:, :2] = gsize * np.dstack(np.mgrid[1: gw + 1, -1: gh - 1]).reshape(-1, 2)
 
 		criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-		corners2 = cv2.cornerSubPix(gray_image, corners, (11, 11), (-1, -1), criteria)
+		corners2 = cv2.cornerSubPix(gray_image, np.array(corners), (11, 11), (-1, -1), criteria)
+
+		if show:
+			self.show_corners_(gray_image, corners2)
 
 		ret, rvec, tvec = cv2.solvePnP(objp, corners2, self.color_camera_matrix, self.color_distortion_coeffs)
 
 		world2cam = utils.transformation_matrix(rvec, tvec)
 		cam2world = utils.inverse_transformation_matrix(rvec, tvec)
+
+		# point_2d, jacobian = cv2.projectPoints(objp, rvec, tvec, self.color_camera_matrix, self.color_distortion_coeffs)
+		# point_2d_2 = utils.coord_transform(world2cam, objp)
+		# point_2d_2 = np.dot(self.color_camera_matrix, point_2d_2.T).T
+		# point_2d_2[:, :2] /= point_2d_2[:, 2: 3]
+		# print(point_2d[:5])
+		# print(point_2d_2[:5])
+		# print(corners2[:5])
 
 		return rvec, tvec, world2cam, cam2world
 
@@ -62,6 +76,8 @@ class Camera:
 			[0, fy, ppy],
 			[0, 0, 1]
 		], dtype=np.float32)
+		self.focal_length = np.array([fx, fy], dtype=np.float32)
+		self.principal_points = np.array([ppx, ppy], dtype=np.float32)
 
 	def get_frame(self):
 
@@ -77,3 +93,12 @@ class Camera:
 	def stop(self):
 
 		self.pipeline.stop()
+
+	def show_corners_(self, gray_image, corners):
+
+		img = np.array(gray_image)
+		for corner in corners:
+			x, y = utils.cv_coords_to_np(int(corner[0, 0]), int(corner[0, 1]))
+			utils.draw_square(img, x, y, square_size=6)
+		plt.imshow(img)
+		plt.show()

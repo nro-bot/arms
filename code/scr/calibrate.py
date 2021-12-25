@@ -26,7 +26,7 @@ try:
         z = np.mean(z[z != 0])
 
         vec = np.array([x, y, z, 1.], dtype=np.float32)
-        vec2 = np.matmul(vec, cam2world)
+        vec2 = np.dot(cam2world, vec)
         print(x, y, z)
         print(vec2)
 
