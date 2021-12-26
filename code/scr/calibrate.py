@@ -1,53 +1,25 @@
-import pyrealsense2 as rs
-import numpy as np
-import cv2
+import argparse
 from camera import Camera
-import utils
+import paths
 
 
-c = Camera()
-c.start()
+def main(args):
 
-color_image = None
-depth_image = None
+    c = Camera()
+    c.start()
 
-try:
-    rvec, tvec, world2cam, cam2world = c.calc_location()
+    try:
+        c.calibrate(show=args.show)
+        c.save_calibration(args.save_path)
 
+    finally:
 
-    def click_cam2world(event, x, y, flags, param):
-
-        if event != cv2.EVENT_LBUTTONDOWN:
-            return
-
-        y, x = x, y
-        window_size = 20
-        z = depth_image[x - window_size: x + window_size, y - window_size: y + window_size]
-        z = np.mean(z[z != 0])
-
-        vec = np.array([x, y, z, 1.], dtype=np.float32)
-        vec2 = np.dot(cam2world, vec)
-        print(x, y, z)
-        print(vec2)
+        # Stop streaming
+        c.stop()
 
 
-    cv2.namedWindow("RealSense", cv2.WINDOW_AUTOSIZE)
-    cv2.setMouseCallback("RealSense", click_cam2world)
-
-    while True:
-
-        # Wait for a coherent pair of frames: depth and color
-        depth_image, color_image = utils.realse_frame_to_numpy(c.get_frame())
-
-        # Apply colormap on depth image (image must be converted to 8-bit per pixel first)
-        depth_colormap = utils.depth_image_to_colormap(depth_image)
-        images = np.hstack((color_image, depth_colormap))
-
-        # Show images
-        if utils.update_opencv_window(images):
-            break
-
-finally:
-
-    # Stop streaming
-    c.stop()
+parser = argparse.ArgumentParser()
+parser.add_argument("--save-path", default=paths.DEFAULT_CALIBRATION_PATH,
+                    help="Save path for pickle with camera calibration data.")
+parser.add_argument("--show", default=False, action="store_true", help="Show intermediate steps of calibration.")
+main(parser.parse_args())

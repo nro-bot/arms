@@ -4,3 +4,7 @@ class NoFrameException(Exception):
 
 class CheckerboardNotFound(Exception):
     pass
+
+
+class NotCalibratedException(Exception):
+    pass

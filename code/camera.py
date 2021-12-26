@@ -1,3 +1,5 @@
+import os
+import pickle
 import pyrealsense2 as rs
 import cv2
 import numpy as np
@@ -14,9 +16,12 @@ class Camera:
 
 	def __init__(self):
 
-		pass
+		self.rvec = None
+		self.tvec = None
+		self.world2cam = None
+		self.cam2world = None
 
-	def calc_location(self, show=False):
+	def calibrate(self, show=False):
 
 		gh, gw = (9, 7)
 		gsize = 0.021
@@ -45,15 +50,10 @@ class Camera:
 		world2cam = utils.transformation_matrix(rvec, tvec)
 		cam2world = utils.inverse_transformation_matrix(rvec, tvec)
 
-		# point_2d, jacobian = cv2.projectPoints(objp, rvec, tvec, self.color_camera_matrix, self.color_distortion_coeffs)
-		# point_2d_2 = utils.coord_transform(world2cam, objp)
-		# point_2d_2 = np.dot(self.color_camera_matrix, point_2d_2.T).T
-		# point_2d_2[:, :2] /= point_2d_2[:, 2: 3]
-		# print(point_2d[:5])
-		# print(point_2d_2[:5])
-		# print(corners2[:5])
-
-		return rvec, tvec, world2cam, cam2world
+		self.rvec = rvec
+		self.tvec = tvec
+		self.world2cam = world2cam
+		self.cam2world = cam2world
 
 	def start(self):
 
@@ -93,6 +93,42 @@ class Camera:
 	def stop(self):
 
 		self.pipeline.stop()
+
+	def save_calibration(self, save_path):
+
+		if self.tvec is None or self.rvec is None or self.cam2world is None or self.world2cam is None:
+			raise exceptions.NotCalibratedException()
+
+		d = {
+			"tvec": self.tvec,
+			"rvec": self.rvec,
+			"world2cam": self.world2cam,
+			"cam2world": self.cam2world
+		}
+
+		save_dir = os.path.dirname(save_path)
+
+		if os.path.isfile(save_dir):
+			raise FileExistsError("Save directory is a file.")
+
+		if not os.path.isdir(save_dir):
+			os.makedirs(save_dir)
+
+		with open(save_path, "wb") as f:
+			pickle.dump(d, f)
+
+	def load_calibration(self, load_path):
+
+		if not os.path.isfile(load_path):
+			raise FileNotFoundError("Pickle with calibration data not found.")
+
+		with open(load_path, "rb") as f:
+			d = pickle.load(f)
+
+		self.tvec = d["tvec"]
+		self.rvec = d["rvec"]
+		self.world2cam = d["world2cam"]
+		self.cam2world = d["cam2world"]
 
 	def show_corners_(self, gray_image, corners):
 
