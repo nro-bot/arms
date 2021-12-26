@@ -50,8 +50,13 @@ def main(args):
             p0 = np.array([0, 0, 0], dtype=np.float32)
             n = np.array([0, 0, 1], dtype=np.float32)
 
-            # TODO: check for rays that do not intersect the checkerboard
-            t = np.dot((p0 - l0), n) / np.dot(n, l)
+            # check for rays that never hit the ground
+            denom = np.dot(n, l)
+            if np.abs(denom) < 1e-6:
+                print("Ray does not intersection checkerboard.")
+                return
+
+            t = np.dot((p0 - l0), n) / denom
             p = l0 + l * t
 
             # p is the intersection of the ray and the checkerboard
