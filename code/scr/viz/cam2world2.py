@@ -29,26 +29,33 @@ def main(args):
 
             print("Canvas space (x, y): ({:.4f}, {:.4f}) px.".format(y, x))
 
-            # use depth to calculate how far away the pixel we selected is from camera
-            window_size = 5
-            tmp_x, tmp_y = utils.cv_coords_to_np(x, y)
-            z = depth_image[tmp_x - window_size: tmp_x + window_size, tmp_y - window_size: tmp_y + window_size]
-            z = np.mean(z[z != 0]) / 1000.
-
+            # let's assume that we don't have a depth camera => we don't know how fare away from
+            # camera the selected point is
+            # simply set z to 1
+            z = 1.
             x = z / c.focal_length[0] * (x - c.principal_points[0])
             y = z / c.focal_length[1] * (y - c.principal_points[1])
 
-            # point in the camera space
-            point_camera = np.array([x, y, z], dtype=np.float32)
-            # point in the world space
-            point_world = utils.coord_transform(cam2world, point_camera)[0]
+            # get the camera position (0, 0, 0) and a unit vector representing a direction
+            # of the ray that hit the pixel of the canvas we selected
+            l0 = np.array([0., 0., 0.], dtype=np.float32)
+            l = np.array([x, y, z], dtype=np.float32)
+            l /= np.sqrt(np.sum(np.square(l)))
 
-            print("Camera space (x, y, z): ({:.4f}, {:.4f}, {:.4f}) m.".format(
-                point_camera[0], point_camera[1], point_camera[2])
-            )
-            print("World space (x, y, z): ({:.4f}, {:.4f}, {:.4f}) m.".format(
-                point_world[0], point_world[1], point_world[2])
-            )
+            # calculate the intersection of the ray (l0 + t * l) and the checkerboard
+            # let's set the origin of the checkerboard to (0, 0, 0) in world coordinates
+            # and its normal to (0, 0, 1)
+            l0 = utils.coord_transform(cam2world, l0)[0]
+            l = utils.coord_rotate(cam2world, l)[0]
+            p0 = np.array([0, 0, 0], dtype=np.float32)
+            n = np.array([0, 0, 1], dtype=np.float32)
+
+            # TODO: check for rays that do not intersect the checkerboard
+            t = np.dot((p0 - l0), n) / np.dot(n, l)
+            p = l0 + l * t
+
+            # p is the intersection of the ray and the checkerboard
+            print("World space (x, y, z): ({:.4f}, {:.4f}, {:.4f}) m.".format(p[0], p[1], p[2]))
 
         cv2.namedWindow("RealSense", cv2.WINDOW_AUTOSIZE)
         cv2.setMouseCallback("RealSense", click_cam2world)
@@ -72,7 +79,8 @@ def main(args):
 
 parser = argparse.ArgumentParser(
     "Click in to the image. The script will print a world coordinate centered "
-    "at the top-right corner of the checkerboard."
+    "at the top-right corner of the checkerboard. This version doesn't use the depth camera. "
+    "Instead it picks a point on the surface of the checkerboard."
 )
 parser.add_argument("--load-path", default=paths.DEFAULT_CALIBRATION_PATH, help="Load path for calibration data.")
 main(parser.parse_args())

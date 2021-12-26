@@ -78,6 +78,16 @@ def coord_transform(transform_mtx, pts):
     return new_pts
 
 
+def coord_rotate(transform_mtx, pts):
+
+    if len(pts.shape) == 1:
+        pts = pts[None, :]
+
+    homog_pts = np.concatenate([pts, np.zeros((len(pts), 1))], axis=1)
+    new_homog_pts = np.dot(transform_mtx, homog_pts.T).T
+    return new_homog_pts[:, :-1]
+
+
 def draw_square(img: np.ndarray, x: int, y: int, square_size=20, copy=False):
 
     size = square_size // 2
