@@ -29,6 +29,7 @@ def main(args):
                 return
 
             y, x = x, y
+            print("Canvas space (x, y): ({:.4f}, {:.4f}) px.".format(y, x))
             window_size = 20
             z = depth_image[x - window_size: x + window_size, y - window_size: y + window_size]
             z = np.mean(z[z != 0]) / 1000.
@@ -40,10 +41,10 @@ def main(args):
             y = z / c.focal_length[1] * (y - c.principal_points[1])
 
             vec = np.array([x, y, z])
-            vec2 = utils.coord_transform(cam2world, vec)
+            vec2 = utils.coord_transform(cam2world, vec)[0]
 
-            print(x, y, z)
-            print(vec2)
+            print("Camera space (x, y, z): ({:.4f}, {:.4f}, {:.4f}) m.".format(x, y, z))
+            print("World space (x, y, z): ({:.4f}, {:.4f}, {:.4f}) m.".format(vec2[0], vec2[1], vec2[2]))
 
         cv2.namedWindow("RealSense", cv2.WINDOW_AUTOSIZE)
         cv2.setMouseCallback("RealSense", click_cam2world)
@@ -66,8 +67,8 @@ def main(args):
 
 
 parser = argparse.ArgumentParser(
-    "Project (x, y, z) coordinates in world points onto the camera canvas. "
-    "Try typing '0 0 0', just need to type it twice before a picture appears."
+    "Click in to the image. The script will print a world coordinate centered "
+    "at the top-right corner of the checkerboard."
 )
 parser.add_argument("--load-path", default=paths.DEFAULT_CALIBRATION_PATH, help="Load path for calibration data.")
 main(parser.parse_args())
