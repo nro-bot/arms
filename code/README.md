@@ -16,12 +16,12 @@ pip install -r requirements.txt
 
 # Usage
 
-Running tutorials:
-`
-python -m scr.tutorial.1
-`
-etc.
+Run tutorials: `python -m scr.tutorial.1` etc.
+
+Calibrate camera: `python -m scr.calibrate`, saves data in `data/calibration.pickle`.
 
 # Other
 
 * Link to pyrealsense examples: [click here](https://github.com/IntelRealSense/librealsense/tree/master/wrappers/python/examples).
+
+* Link to David Klee's nuro-arm repo that we are building off of: [click here](https://github.com/dmklee/nuro-arm).
