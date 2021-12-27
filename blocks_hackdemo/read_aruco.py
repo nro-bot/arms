@@ -24,6 +24,10 @@ Sample output:
     x: 6.085     y: -17.797   z: 86.09     Rx: 1.778     Ry: -11.036   Rz: -96.712
     x: 6.802     y: -18.344   z: 88.467    Rx: 5.607     Ry: 30.541    Rz: -96.955
 
+
+NOTE: The `2` stands for "second camera". Usually the first camera will be
+your built-in laptop camera, and to select the webcam you put in the `2`
+(or try values until the popup opencv window shows the right videostream)
 NOTE: Readings are in mm. So, z: 88 = 8.8 cm from camera. x, y origin are
 centered at camera also (i think at the center of the lens, not the
 sensor).
