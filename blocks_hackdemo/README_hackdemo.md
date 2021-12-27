@@ -1,3 +1,4 @@
+NOTE: model folder is for speech recog 
 
 ## HOW TO MOVE ARM (31 Oct 2021)
 
@@ -111,6 +112,7 @@ detected error in: elbow, wrist
 
 ## SPEECH RECOGNITION
 
+Using Vosk. 
 speech recognition quickstart: (runs offline, real time inference, on my cpu laptop easily):
 https://alphacephei.com/vosk/install
 
@@ -123,3 +125,35 @@ mv vosk-model-small-en-us-0.15 model
 pip install sounddevice
 python test_microphone.py
 ```
+
+
+## SPEECH SYNTHESIS
+
+Using Mozilla TTS.
+
+NOTE: in my bashrc: alias mkenv='python3 -m venv env && startenv && pip3 install --upgrade pip && pip3 install wheel && echo done'
+
+```
+mkenv
+pip install tts
+```
+
+```
+$ tts --list_models
+$ TTS="tts_models/en/ljspeech/glow-tts"
+$ tts --text "What would you like me to do?" --model_name $TTS
+ > tts_models/en/ljspeech/glow-tts is already downloaded.
+ > Downloading model to /home/nrw/.local/share/tts/vocoder_models--en--ljspeech--multiband-melgan
+ > Using model: glow_tts
+ > Vocoder Model: multiband_melgan
+ > Generator Model: multiband_melgan_generator
+ > Discriminator Model: melgan_multiscale_discriminator
+ > Text: What would you like me to do?
+ > Text splitted to sentences.
+['What would you like me to do?']
+ > Processing time: 0.7528579235076904
+ > Real-time factor: 0.3542274926029484
+ > Saving output to tts_output.wav
+$ play tts_output.wav
+```
+
