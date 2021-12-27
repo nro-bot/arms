@@ -71,6 +71,7 @@ try:
             print('#' * 80)
             print('Press Ctrl+C to stop the recording')
             print('#' * 80)
+            print('debug: ', args.samplerate, args.device)
 
             rec = vosk.KaldiRecognizer(model, args.samplerate)
             while True:
