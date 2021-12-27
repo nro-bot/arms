@@ -3,40 +3,43 @@
 author: nouyang
 '''
 import os
-os.system('TTS="tts_models/en/ljspeech/glow-tts"')
-os.system('tts --text "What would you like me to do?" --model_name $TTS')
-os.system('play tts_output.wav')
+import re
+
+'''
+TEXT='Hi!'
+tts --text $TEXT --out_path tts_$NAME.wav; aplay tts_$NAME.wav
+'''
+
 # https://github.com/mozilla/TTS/tree/e9e07844b77a43fb0864354791fb4cf72ffded11/TTS/server
 
-'''
-from playsound import playsound
-from TTS.utils.synthesizer import Synthesizer
-from TTS.utils.manage import ModelManager
+phrases = ["Hi there!", 
+           "Say that again?",
+           "Okay, I can do that",
+           "Okay, getting the blue cube",
+           "Okay, getting the yellow cube",
+           "Okay, getting the black cube"]
 
+def generate_speech(phrases, preview=False, overwrite_files=False):
+    folder = 'speech_output' 
+    # -- Make folder if not exist
+    if not os.path.exists(folder):
+        print(f'Making directory: {folder}\n')
+        os.makedirs(folder)
 
+    print('Generating speech')
+    for phrase in phrases:
 
-synth = Synthesizer(
-wavs = synth.tts('this is a test')
-#out = io.BytesIO()
-synth.save_wav(wavs, 'output_wav.wav')
-playsound('tts_output.wav')
+        clean_filename = re.sub(r'\W+', '', phrase)
+        filename = f'{folder}/{clean_filename}.wav'
 
-# Run the server with the official models. python TTS/server/server.py --model_name tts_models/en/ljspeech/tacotron2-DCA --vocoder_name vocoder_models/en/ljspeech/mulitband-melgan
+        file_exists = (os.path.exists(filename) and os.stat(filename).st_size != 0)
+        if file_exists and not overwrite_files:
+            print(f'- Phrase already exists: {phrase}')
+        else:
+            #os.system('MODEL="tts_models/en/ljspeech/glow-tts"')
+            #os.system('tts --text "What would you like me to do?" --model_name $MODEL')
+            os.system(f'tts --text "{phrase}" --out_path "{filename}"')
+        if preview:
+            os.system(f'play "{filename}"')
 
-'''
-
-'''
-# Generates TTS using espeak, sounds terrible, but it's fast and offline
-
-import pyttsx
-
-engine = pyttsx.init()
-voices = engine.getProperty('voices')
-print(len(voices))
-
-for i in range(len(voices)):
-    print(f'Voice {i} out of {len(voices)})
-    engine.setProperty('voice', voices[i].id) #change index to change voices
-    engine.say(f'Voice {i}: Which cube would you like?')
-    engine.runAndWait()
-'''
+generate_speech(phrases, preview=True)
