@@ -18,7 +18,9 @@ pip install -r requirements.txt
 
 Run tutorials: `python -m scr.tutorial.1` etc.
 
-Calibrate camera: `python -m scr.calibrate`, saves data in `data/calibration.pickle`.
+Calibrate camera: `python -m scr.calibrate_camera`, saves data in `data/calibration.pickle`.
+
+Calibrate arm (has graphical UI): `python -m scr.calibrate_arm`, saved data in `data/xarm_config.npy`.
 
 # Other
 
