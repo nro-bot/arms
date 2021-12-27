@@ -1,0 +1,7 @@
+class CmdLib:
+    SIGNATURE = 85
+    MOVE = 3
+    POWER_OFF = 20
+    POSITION_READ = 21
+    OFFSET_READ = 23
+    OFFSET_WRITE = 24
