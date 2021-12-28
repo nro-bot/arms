@@ -77,6 +77,7 @@ def move_to_grab(position, grab=True):
 X_THRES_1 = 223
 X_THRES_2 = 350
 def inspect_camera_img():
+    # Human Helper fxn for finding thresholds
     cam = cv2.VideoCapture(CAMERA_NUM)
     print('Showing image. Pick your x thresholds for the three slots.')
     while True:
@@ -123,7 +124,7 @@ def find_cube_slot(desired_color, color_x_positions, x_thres_1, x_thres_2):
     return color_slots[desired_color]
 
 
-def match_to_closest_color(sampled_color, max_threshold = 40): 
+def match_to_closest_color(sampled_color): 
     # NOTE: has to be tweaked when it's daylight or nighttime T^T
     # match to yellow, blue, or black
 
@@ -152,8 +153,14 @@ def match_to_closest_color(sampled_color, max_threshold = 40):
     return closest_color
 
 def find_color_xpos():
+    # For all the arucotags, 
+    # Find the color (as sampled right above the tag)
+    # and fill in dictionary with the color's (avg of the two x's for the corners)
+    # which we'll later use to threshold each color into a slot
+
     # NOTE: assumes cubes are always oriented with tag facing camera
     # directly!!!
+
     # Determine color by sampling close to tag in known 'correct' direction
     # (which won't sample onto page, other cube, etc.)
 
@@ -165,7 +172,7 @@ def find_color_xpos():
     }
 
     # NOTE: all cubes have same tag
-    ID_CUBE = 0
+    # ID_CUBE = 0
 
     cam = cv2.VideoCapture(CAMERA_NUM)
     ret, image = cam.read(0.)
@@ -206,16 +213,6 @@ def find_color_xpos():
         print('-' * 40)
         print(f'RGB value of Average for id {id} is {average}')
         print('-' * 40)
-        # annot changes state of image for some reason!!
-        '''
-        annot = image.copy()
-        annot = cv2.rectangle(annot, (x-rad, y-rad), (x+rad, y+rad),
-                            (255,0,0),
-                            2
-                            )
-        list_annots.append(annot)
-        #cv2.imshow('annot', annot)
-        '''
 
         color = match_to_closest_color(average)
         print('matched color', color)
@@ -225,6 +222,10 @@ def find_color_xpos():
             print(f'ERROR: for the {n} tag, out of {len(ids)} tags,' \
                 f' I found no color.')
     '''
+    # for debugging: draw blue rectangles around where we're sampling
+    # this WILL CHANGE the sampled color, for some reason it includes the
+    # blue rectangle pixels into the color averaging...
+
     while True:
         # this changes state of image for some reason!!
         for annot_img in list_annots:
