@@ -94,7 +94,7 @@ PARAMETERS = aruco.DetectorParameters_create()
 #TAGSIZE = 0.0038 # in meters
 TAGSIZE = 0.011 # in meters
 
-NUMTAGS = 1
+NUMTAGS = 4
 
 # Pick a single tag to print (for readability) 
 # NOTE: zero-indexed
@@ -116,7 +116,6 @@ CAMERAMATRIX = np.array([[521.92676671,   0.,         315.15287785],
 
 DISTORTIONCOEFFICIENTS =  np.array([ 0.02207713,  0.18641578, -0.01917194, -0.01310851,
                         -0.11910311])
-
 
 
 ## ------------------------------
@@ -208,6 +207,7 @@ while(True):
         # readability I use the below.
         ids = [tag[0] for tag in tagData]
         corners = [tag[1] for tag in tagData]
+        print(corners(0))
 
         # Use built-in algorithm to back out 6D pose 
         # Rotation vector, translation vector
