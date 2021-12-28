@@ -50,7 +50,7 @@ def callback(indata, frames, time, status):
     q.put(bytes(indata))
 
 def find_keyword(voice_result):
-    if 'smarty' in voice_result:
+    if 'smarty' in voice_result or 'marty' in voice_result:
         print('-' * 40)
         print('this is voice result', voice_result)
         print('-' * 40)
@@ -73,7 +73,6 @@ def parse_for_phrases(voice_result):
     colors = ['blue', 'yellow', 'black']
     words = voice_result.split(' ')
 
-    completed_cmd = False
     for color in colors:
         if color in words:
             print(f'Parsed {color}!')
@@ -82,8 +81,8 @@ def parse_for_phrases(voice_result):
             os.system(f'play "{sound_file}"')
             #time.sleep(2)
             q.queue.clear()
-            completed_cmd = True
-    return completed_cmd
+            return True
+    return False
             
 
 my_model = "voice_model"
@@ -114,6 +113,7 @@ try:
             while True:
                 data = q.get()
                 if rec.AcceptWaveform(data):
+                    print('state', state_triggered)
                     sentence = rec.Result()
                     if not state_triggered:
                         found_keyword = find_keyword(sentence)
