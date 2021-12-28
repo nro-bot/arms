@@ -157,3 +157,13 @@ $ tts --text "What would you like me to do?" --model_name $TTS
 $ play tts_output.wav
 ```
 
+
+###  XYZ MOVEMENTS
+
+checkerboard from left to right: (-0.0858, 0.0675) 2nd dim
+checkerboard from close to far: (0.185, 0.297) 1st dim
+from bottom to hover over cube: (0.0263 to 0.071) 3rd dim
+
+neutral pose (stable without power): [0.1488 0.0125 0.2536]
+
+
