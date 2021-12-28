@@ -30,9 +30,10 @@ self_phrases = ["okay getting the blue que",
 filenames = []
 folder = 'speech_output' 
 
-mapping = {'blue':3,
+mapping = {'smarty':0,
+           'blue':3,
            'yellow':4,
-           'black':5}
+           'black':5,}
 
 for phrase in phrases:
     clean_filename = re.sub(r'\W+', '', phrase)
@@ -48,6 +49,20 @@ def callback(indata, frames, time, status):
         print(status, file=sys.stderr)
     q.put(bytes(indata))
 
+def find_keyword(voice_result):
+    if 'smarty' in voice_result:
+        print('-' * 40)
+        print('this is voice result', voice_result)
+        print('-' * 40)
+        print('keyword recongized')
+        idx = 0
+        sound_file = filenames[idx]
+        os.system(f'play "{sound_file}"')
+        q.queue.clear()
+        return True
+    return False
+
+
 def parse_for_phrases(voice_result):
     #if voice_result in self_phrases:
         #return
@@ -57,6 +72,8 @@ def parse_for_phrases(voice_result):
     print('-' * 40)
     colors = ['blue', 'yellow', 'black']
     words = voice_result.split(' ')
+
+    completed_cmd = False
     for color in colors:
         if color in words:
             print(f'Parsed {color}!')
@@ -65,6 +82,9 @@ def parse_for_phrases(voice_result):
             os.system(f'play "{sound_file}"')
             #time.sleep(2)
             q.queue.clear()
+            completed_cmd = True
+    return completed_cmd
+            
 
 my_model = "voice_model"
 device = None
@@ -79,6 +99,9 @@ samplerate = int(device_info['default_samplerate'])
 
 model = vosk.Model(my_model)
 
+
+state_triggered = False
+
 try:
     with sd.RawInputStream(samplerate=samplerate, blocksize = 8000, device=device, dtype='int16',
                             channels=1, callback=callback):
@@ -92,7 +115,14 @@ try:
                 data = q.get()
                 if rec.AcceptWaveform(data):
                     sentence = rec.Result()
-                    parse_for_phrases(sentence)
+                    if not state_triggered:
+                        found_keyword = find_keyword(sentence)
+                        if found_keyword:
+                            state_triggered = True
+                    elif state_triggered:
+                        completed_cmd = parse_for_phrases(sentence)
+                        if completed_cmd:
+                            state_triggered = False
                 else:
                     print(rec.PartialResult())
 
