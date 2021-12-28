@@ -72,12 +72,19 @@ PARAMETERS = aruco.DetectorParameters_create()
 # Variable 'selected_color' can be any of COLORS['GREEN'], COLORS['BLUE'] or COLORS['YELLOW']
 # show_selected_images(images, selected_color, 60)
 
-def match_to_closest_color(sampled_color, max_threshold = 60): 
+def match_to_closest_color(sampled_color, max_threshold = 40): 
     
+    '''
     COLORS = {
         'BLACK': [0, 0, 0],
         'BLUE': [0, 0, 128],
         'YELLOW': [255, 255, 0]
+    }
+    '''
+    COLORS = {
+        'BLACK': [0, 0, 0],
+        'BLUE': [45, 77, 134],
+        'YELLOW': [150, 130, 80]
     }
 
 
@@ -114,7 +121,7 @@ while(True):
     # directly!!!
     # Determine color by sampling close to tag in known 'correct' direction
     # (which won't sample onto page, other cube, etc.)
-    idx = np.where(ids == ID_BLU)[0][0] # pick first occurence of id
+    idx = np.where(ids == ID_YEL)[0][0] # pick first occurence of id
     #print(corners)
     corner_coords = corners[idx][0] # such a weird data format.
     xs = corner_coords[:,0]
