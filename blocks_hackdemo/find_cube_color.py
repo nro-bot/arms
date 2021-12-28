@@ -9,8 +9,10 @@ import sys
 from datetime import datetime
 import itertools
 
-from skimage.color import rgb2lab, deltaE_cie76
+#from skimage.color import rgb2lab, deltaE_cie76
 
+#import matplotlib.colors as mcolors
+import colorsys
 
 '''
 #---------- 
@@ -49,20 +51,6 @@ ID_BLK = 0
 ID_BLU = 1
 ID_YEL = 2
 
-
-
-
-# Get green color
-blue = np.uint8([[[0, 0, 255]]])
-# Convert Green color to Green HSV
-hsv_blue = cv2.cvtColor(blue, cv2.COLOR_BGR2HSV)
-# Print HSV Value for Green color
-print(hsv_blue)
-h = hsv_blue
-lower = [h-10, 100, 100]
-upper = [h+10, 255, 255]
-
-
 ARUCODICT = aruco.Dictionary_get(aruco.DICT_ARUCO_ORIGINAL)
 
 
@@ -74,45 +62,49 @@ PARAMETERS = aruco.DetectorParameters_create()
 
 def match_to_closest_color(sampled_color, max_threshold = 40): 
     
-    '''
-    COLORS = {
-        'BLACK': [0, 0, 0],
-        'BLUE': [0, 0, 128],
-        'YELLOW': [255, 255, 0]
-    }
-    '''
-    COLORS = {
-        'BLACK': [0, 0, 0],
-        'BLUE': [45, 77, 134],
-        'YELLOW': [150, 130, 80]
-    }
+# hue to distinguish colors
+# yellow is 40ish
+# blue is 200ish
+# black is 220sih, but 14ish for value
+# value to distinguish black from blue
 
+    # https://stackoverflow.com/questions/2612361/convert-rgb-values-to-equivalent-hsv-values-using-python
 
-    #image_color = get_colors(image, number_of_colors, False)
-    sampled_color = rgb2lab(np.uint8(sampled_color))
+    # color is in BGR 
+    rgb = sampled_color[::-1] # reverse
+    rgb_pct = rgb / 255
+    #hsv = mcolors.rgb_to_hsv(rgb)
+    hsv_pct = colorsys.rgb_to_hsv(*rgb_pct)
+    hsv = np.array(hsv_pct) * 255
+    print('rgb', rgb, 'hsv', hsv)
+    #print('hsv', [np.int(c) for c in hsv])
+
+    #sampled_color = rgb2lab(np.uint8(sampled_color))
+    #image = np.reshape(sampled_color, (1,1,3)) 
+    #cv2.cvtColor(image, cv.COLOR_BGR2HSV)
+
+    hue = hsv[0]
+    val = hsv[2]
 
     closest_color = None
 
-    min_diff = np.inf
-    for color, val in COLORS.items():
-        curr_color = rgb2lab(np.uint8(val))
-        diff = deltaE_cie76(sampled_color, curr_color)
-        if diff < max_threshold:
-            if diff < min_diff:
-                min_diff = diff
-                closest_color = color
+    if hue < 60 and hue > 20:
+        closest_color = 'yellow'
+    if  hue > 180:
+        if val > 40:
+            closest_color = 'blue'
+        else:
+            closest_color = 'black'
 
     return closest_color
 
-
-# note: for smarter color picker alg, see https://stackoverflow.com/questions/43111029/how-to-find-the-average-colour-of-an-image-in-python-with-opencv
-# https://towardsdatascience.com/color-identification-in-images-machine-learning-application-b26e770c4c71
 
 image = cv2.imread('screencap2_easy.jpg')
 
 corners, ids, rejectedImgPoints = aruco.detectMarkers(image, ARUCODICT, parameters=PARAMETERS)
 
 img = aruco.drawDetectedMarkers(image, corners)
+
 while(True):
     cv2.imshow('tags', img)
 
@@ -157,6 +149,8 @@ while(True):
         ENDTIME = datetime.now()
         print('Caught q key, exiting')
         break
+
+
 
 
 
