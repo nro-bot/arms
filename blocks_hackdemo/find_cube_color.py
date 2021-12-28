@@ -7,12 +7,11 @@ import numpy as np
 import math
 import sys
 from datetime import datetime
-import itertools
+import colorsys
 
 #from skimage.color import rgb2lab, deltaE_cie76
 
 #import matplotlib.colors as mcolors
-import colorsys
 
 '''
 #---------- 
@@ -149,9 +148,3 @@ while(True):
         ENDTIME = datetime.now()
         print('Caught q key, exiting')
         break
-
-
-
-
-
-

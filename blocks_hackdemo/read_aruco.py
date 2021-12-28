@@ -94,7 +94,7 @@ PARAMETERS = aruco.DetectorParameters_create()
 #TAGSIZE = 0.0038 # in meters
 TAGSIZE = 0.011 # in meters
 
-NUMTAGS = 4
+NUMTAGS = 3
 
 # Pick a single tag to print (for readability) 
 # NOTE: zero-indexed
@@ -184,8 +184,6 @@ while(True):
     # Our operations on the frame come here
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-
-
     # Detect marker, then return list of ids, and the coordinates of the corners
     # for each marker
     corners, ids, rejectedImgPoints = aruco.detectMarkers(gray, ARUCODICT,
@@ -207,7 +205,7 @@ while(True):
         # readability I use the below.
         ids = [tag[0] for tag in tagData]
         corners = [tag[1] for tag in tagData]
-        print(corners(0))
+        #print(corners)
 
         # Use built-in algorithm to back out 6D pose 
         # Rotation vector, translation vector
@@ -229,16 +227,31 @@ while(True):
         outputAngles = outputAngles.reshape((NUMTAGS, 1, 3))
 
         # Convert to millimeters
-        output = np.concatenate((tvec[PRINTINDEX]*1000, outputAngles[PRINTINDEX])
-                                ).flatten()
-        output = np.round(output, decimals=3)
+        PRINT_ALL = True
+        if PRINT_ALL:
+            for idx in range(NUMTAGS):
+                print('Tag #', idx)
+                output = np.concatenate((tvec[idx]*1000, outputAngles[idx])
+                                        ).flatten()
+                output = np.round(output, decimals=3)
 
-        # Add spaces out to 10 chars, so readings line up in nice columns 
-        a = ['{0: <10}'.format(axis) for axis in output]
+                # Add spaces out to 10 chars, so readings line up in nice columns 
+                a = ['{0: <10}'.format(axis) for axis in output[:3]]
 
-        # Append labels (with zip), then format for printing
-        flattened = itertools.chain.from_iterable(zip(AXISLABELS, a)) 
-        print(''.join(flattened))
+                # Append labels (with zip), then format for printing
+                flattened = itertools.chain.from_iterable(zip(AXISLABELS, a)) 
+                print(''.join(flattened))
+        else:
+            output = np.concatenate((tvec[PRINTINDEX]*1000, outputAngles[PRINTINDEX])
+                                    ).flatten()
+            output = np.round(output, decimals=3)
+
+            # Add spaces out to 10 chars, so readings line up in nice columns 
+            a = ['{0: <10}'.format(axis) for axis in output]
+
+            # Append labels (with zip), then format for printing
+            flattened = itertools.chain.from_iterable(zip(AXISLABELS, a)) 
+            print(''.join(flattened))
 
         if writeFlag:
             nowTime = datetime.now()
@@ -252,13 +265,10 @@ while(True):
     else:
         print('None')
 
-
-
     if cv2.waitKey(1) & 0xFF == ord('q'):
         ENDTIME = datetime.now()
         print('Caught q key, exiting')
         break
-
 
 # When everything done, release the capture
 #strtime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -274,3 +284,24 @@ print('Frames/sec (Hz): ', freq)
 cap.release()
 cv2.destroyAllWindows()
 
+
+## NOTES: 28 Dec 2021
+
+'''
+IN CAMERA COORDS
+Tag # 0
+x: -53.119   y: 98.23     z: 290.231
+Tag # 1
+x: 12.127    y: 92.547    z: 234.446
+Tag # 2
+x: 64.259    y: 115.488   z: 237.191
+'''
+
+'''
+THRESHOLD positions:
+
+< 0 is  left
+40 < middle < 0
+> 40 right
+
+'''
