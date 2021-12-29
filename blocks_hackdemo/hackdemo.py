@@ -47,14 +47,14 @@ def move_to_grab(position, grab=True):
     xyz = np.append(POS_MID, Z_SUPER_HI)
     robot.move_hand_to(xyz)
     robot.set_gripper_state(OPEN)
-    pose_xy = poses_xy[position]
-    xyz = np.append(pose_xy, Z_HI)
+    cube_xy = poses_xy[position]
+    xyz = np.append(cube_xy, Z_HI)
     robot.move_hand_to(xyz)
     if grab:
-        xyz = np.append(pose_xy, Z_LO)
+        xyz = np.append(cube_xy, Z_LO)
         robot.move_hand_to(xyz)
         robot.set_gripper_state(CLOSE)
-        xyz = np.append(pose_xy, Z_HI)
+        xyz = np.append(cube_xy, Z_HI)
         robot.move_hand_to(xyz)
     robot.move_hand_to(POS_NEUTRAL)
     robot.set_gripper_state(OPEN)
