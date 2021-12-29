@@ -99,6 +99,7 @@ def match_to_closest_color(sampled_color, max_threshold = 40):
 
 
 image = cv2.imread('screencap2_easy.jpg')
+image = cv2.imread('screencap2.jpg')
 
 corners, ids, rejectedImgPoints = aruco.detectMarkers(image, ARUCODICT, parameters=PARAMETERS)
 
@@ -131,14 +132,12 @@ while(True):
     crop = image[y-rad:y+rad, x-rad:x+rad]
     average = crop.mean(axis=0).mean(axis=0)
     cv2.imshow('crop', crop)
-    '''
     # this changes state of image for some reason!!
     annot = cv2.rectangle(image, (x-rad, y-rad), (x+rad, y+rad),
                           (255,0,0),
                           2
                           )
     cv2.imshow('annot', annot)
-    '''
     print(average)
 
     color = match_to_closest_color(average)
