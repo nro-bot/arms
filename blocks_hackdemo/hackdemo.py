@@ -22,21 +22,6 @@ CAMERA_NUM = 2
 
 from nuro_arm.robot.robot_arm import RobotArm
 
-phrases = ["Hi there!", 
-           "Say that again?",
-           "Okay, I can do that",
-           "Okay, getting the blue cube",
-           "Okay, getting the yellow cube",
-           "Okay, getting the black cube"]
-
-
-'''
-self_phrases = ["okay getting the blue que",
-                "okay getting the yellow que",
-                "okay getting the black que",
-                ]
-'''
-
 
 def move_to_grab(position, grab=True):
     # position can ONLY be: 
@@ -100,7 +85,7 @@ def inspect_camera_img():
     print('-' * 80)
 
 
-def find_cube_slot(desired_color, color_x_positions, x_thres_1, x_thres_2):
+def find_cube_slot(desired_color, color_x_coords, x_thres_1, x_thres_2):
     slot =  None # 'left', 'middle', or 'right'
     color_slots = {
         'black': None,
@@ -108,11 +93,11 @@ def find_cube_slot(desired_color, color_x_positions, x_thres_1, x_thres_2):
         'yellow': None
         }
 
-    for color, pos in color_x_positions.items():
-        if pos is not None:
-            if pos < x_thres_1:
+    for color, xcoord in color_x_coords.items():
+        if xcoord is not None:
+            if xcoord < x_thres_1:
                 slot = 'left'
-            elif pos < x_thres_2:
+            elif xcoord < x_thres_2:
                 slot = 'middle'
             else:
                 slot = 'right'
@@ -124,16 +109,16 @@ def find_cube_slot(desired_color, color_x_positions, x_thres_1, x_thres_2):
     return color_slots[desired_color]
 
 
-def match_to_closest_color(sampled_color): 
+def match_to_closest_color(color_sample): 
     # NOTE: has to be tweaked when it's daylight or nighttime T^T
     # match to yellow, blue, or black
 
     # yellow is 40ish # blue is 200ish # black is 220sih, 
     # but but 14ish for value
     # value to distinguish black from blue
-    rgb = sampled_color[::-1] # reverse, color is in BGR from opencv
+    rgb = color_sample[::-1] # reverse, color is in BGR from opencv
     rgb_pct = rgb / 255
-    hsv_pct = colorsys.rgb_to_hsv(*rgb_pct)
+    hsv_pct = colorsys.rgb_to_hsv(*rgb_pct) # fxn takes 3 values, so unpack list with *
     hsv = np.array(hsv_pct) * 255
     print('rgb', rgb, 'hsv', hsv)
 
@@ -142,9 +127,9 @@ def match_to_closest_color(sampled_color):
 
     closest_color = None
 
-    if hue < 40 and hue > 10:
+    if 10 < hue < 40:
         closest_color = 'yellow'
-    if  hue >= 50:
+    if hue >= 50:
         if val > 90:
             closest_color = 'blue'
         else:
@@ -152,20 +137,19 @@ def match_to_closest_color(sampled_color):
 
     return closest_color
 
-def find_color_xpos():
-    # For all the arucotags, 
-    # Find the color (as sampled right above the tag)
-    # and fill in dictionary with the color's (avg of the two x's for the corners)
-    # which we'll later use to threshold each color into a slot
-
+def find_color_xcoords():
     # NOTE: assumes cubes are always oriented with tag facing camera
     # directly!!!
 
+    # Find arucotags
     # Determine color by sampling close to tag in known 'correct' direction
     # (which won't sample onto page, other cube, etc.)
 
+    # and fill in dictionary with x coordinate of each color 
+    # we'll later use the x coord to determine which slot a color is in
+
     # x, color for each of three things
-    color_x_positions = {
+    color_x_coords = {
         'black': None,
         'blue': None,
         'yellow': None,
@@ -185,29 +169,45 @@ def find_color_xpos():
     corners, ids, rejectedImgPoints = aruco.detectMarkers(image, ARUCODICT, parameters=PARAMETERS)
     #img = aruco.drawDetectedMarkers(image, corners)
     #cv2.imshow('tags', img)
+    #print(corners)
 
     print('found ids', ids)
+
+    '''
     list_annots = []
+    '''
+    DRAW_SAMPLED_REGIONS = False
     for n, id in enumerate(ids):
-        #print(corners)
-        corner_coords = corners[n][0] # such a weird data format.
-        xs = corner_coords[:,0]
-        ys = corner_coords[:,1]
+        tag_corner_coords = corners[n][0] # such a weird data format.
+        xs = tag_corner_coords[:,0] 
+        ys = tag_corner_coords[:,1]
 
-        x_min, x_max = np.min(xs), np.max(xs)
-        y_min, y_max = np.min(ys), np.max(ys)
+        rad = 5 # sample radius
 
-        rad = 5 # sample rad
-        #print('xmax, xmin', x_max, x_min, 'y', y_max, y_min)
+        # pick horizotonal center of tag, then go up a bit from top of tag
+        x = int(np.average(xs))
+
+        y_min = np.min(ys) # min y = highest point of tag
         y_offset = 8
-        x, y = int((x_max + x_min) / 2), int(y_min - y_offset)
-        #crop_x1, crop_x2 = int(x + rad), int(x - rad)
-        #crop_y1, crop_y2 = int(y + rad), int(y - rad)
-        # image[rows, columns]
-        #cropped = image[crop_y2:crop_y1, crop_x2:crop_x1]
-        crop = image[y-rad:y+rad, x-rad:x+rad]
-        cv2.imshow('crop', crop)
+        y = int(y_min - y_offset)
 
+        # CV2 format: image[rows, columns]
+        crop = image[y-rad:y+rad, x-rad:x+rad]
+        cv2.imshow('For debugging: part of image sampled for color', crop)
+
+        if DRAW_SAMPLED_REGIONS:
+            # NOTE: for debugging only!: draw blue rectangles around where
+            # we're sampling 
+
+            # WARNING: this WILL CHANGE the sampled color!  For some reason,
+            # despite use of copy(), the blue rectangle will get
+            # included in the sampled pixels
+
+            annot = cv2.rectangle(image.copy(), (x-rad, y-rad), (x+rad, y+rad),
+                                  (255,0,0),
+                                  2
+                                  )
+            list_annots.append(annot)
 
         average = crop.mean(axis=0).mean(axis=0)
         print('-' * 40)
@@ -216,40 +216,35 @@ def find_color_xpos():
 
         color = match_to_closest_color(average)
         print('matched color', color)
+
         if color is not None:
-            color_x_positions[color] = x
+            color_x_coords[color] = x
         else:
             print(f'ERROR: for the {n} tag, out of {len(ids)} tags,' \
                 f' I found no color.')
-    '''
-    # for debugging: draw blue rectangles around where we're sampling
-    # this WILL CHANGE the sampled color, for some reason it includes the
-    # blue rectangle pixels into the color averaging...
 
-    while True:
-        # this changes state of image for some reason!!
-        for annot_img in list_annots:
-            cv2.imshow('annot', annot_img)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                print('Caught q key, exiting')
+    if DRAW_SAMPLED_REGIONS:
+        while True:
+            for annot_img in list_annots:
+                cv2.imshow('annot', annot_img)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    print('Caught q key, exiting')
+                    break
+            if cv2.waitKey(1) & 0xFF == ord('x'):
+                print('Caught x key, exiting')
                 break
-        if cv2.waitKey(1) & 0xFF == ord('x'):
-            print('Caught x key, exiting')
-            break
-    '''
 
-    print('here are the output of find_color_xpos', color_x_positions)
-    return color_x_positions
-
+    print('for each color, i found these x coords:', color_x_coords)
+    return color_x_coords
 
 
 def pick_cube_by_color(color):
-    color_x_positions = find_color_xpos()
-    print(f'found positions: {color_x_positions}')
+    color_x_coords = find_color_xcoords()
+    print(f'found positions: {color_x_coords}')
 
-    slot = find_cube_slot(color, color_x_positions, X_THRES_1, X_THRES_2)
-
+    slot = find_cube_slot(color, color_x_coords, X_THRES_1, X_THRES_2)
     print(f'found slot {slot} for color {color}')
+
     try:
         move_to_grab(slot)
         return True
@@ -260,31 +255,42 @@ def pick_cube_by_color(color):
 #STATE_PICK = False
 
 if __name__ == '__main__':
-    print('inspect camera image')
-    # thresholds for three slots
+    #print('inspect camera image')
     #x_thres_1, x_thres_2 = inspect_camera_img()
-    #find_color_xpos('yellow')
-    #color_x_positions = find_color_xpos()
-    #slot = find_cube_slot('yellow', color_x_positions, X_THRES_1, X_THRES_2)
+
+    #find_color_xcoords('yellow')
+
+    #color_x_coords = find_color_xcoords()
+    #slot = find_cube_slot('yellow', color_x_coords, X_THRES_1, X_THRES_2)
+
     #move_to_grab('left', grab=False)
 
     FLAG_RUN = False
     FLAG_RUN = True
     if FLAG_RUN:
+        phrases = ["Hi there!", 
+                   "Say that again?",
+                   "Okay, I can do that",
+                   "Okay, getting the blue cube",
+                   "Okay, getting the yellow cube",
+                   "Okay, getting the black cube"]
 
-        filenames = []
+
         folder = 'speech_output' 
 
-        mapping = {'smarty':0,
+        reponse_phrase_idxs = {
+                'smarty':0,
                 'blue':3,
                 'yellow':4,
-                'black':5,}
+                'black':5
+        }
+
+        sound_filenames = []
 
         for phrase in phrases:
             clean_filename = re.sub(r'\W+', '', phrase)
             filename = f'{folder}/{clean_filename}.wav'
-            filenames.append(filename)
-
+            sound_filenames.append(filename)
 
         q = queue.Queue()
 
@@ -295,57 +301,56 @@ if __name__ == '__main__':
             q.put(bytes(indata))
 
         def find_keyword(voice_result):
-            if 'smarty' in voice_result or 'marty' in voice_result or 'smart' in voice_result:
-                print('-' * 40)
-                print('this is voice result', voice_result)
+            keywords = ['marty', 'smarty', 'smart']
+            if any(keyword in voice_result for keyword in keywords):
                 print('-' * 40)
                 print('keyword recongized')
-                idx = 0
-                sound_file = filenames[idx]
+                print('this is voice result', voice_result)
+                print('-' * 40)
+
+                response_idx = response_phrase_idxs['smarty']
+                sound_file = sound_filenames[idx]
                 os.system(f'play "{sound_file}"')
+
                 q.queue.clear()
                 return True
             return False
 
 
         def parse_for_phrases(voice_result):
-            #if voice_result in self_phrases:
-                #return
-
             print('-' * 40)
             print('this is voice result', voice_result)
             print('-' * 40)
+
             colors = ['blue', 'yellow', 'black']
             words = voice_result.split(' ')
-
             found_color = None
+
             for color in colors:
                 if color in words:
                     found_color = color
                     print(f'Parsed {color}!')
-                    idx = mapping[color]
-                    sound_file = filenames[idx]
-                    os.system(f'play "{sound_file}"')
-                    #time.sleep(2)
-                    q.queue.clear()
-                    #return True
-            #return False
-            return found_color
 
+                    response_idx = response_phrase_idxs[color]
+                    sound_file = sound_filenames[idx]
+                    os.system(f'play "{sound_file}"')
+
+                    q.queue.clear()
+            return found_color
             
 
-        my_model = "voice_model"
-        device = None
+        my_model = "voice_model" # for speech recognition
 
         if not os.path.exists(my_model):
             print ("Please download a model for your language from https://alphacephei.com/vosk/models")
-            print ("and unpack as 'model' in the current folder.")
+            print ("and unpack as 'voice_model' in the current folder.")
+        model = vosk.Model(my_model)
 
+        device = None
         device_info = sd.query_devices(device, 'input')
         # soundfile expects an int, sounddevice provides a float:
         samplerate = int(device_info['default_samplerate'])
 
-        model = vosk.Model(my_model)
         state_triggered = False
 
         try:
@@ -354,7 +359,7 @@ if __name__ == '__main__':
                 print('#' * 80)
                 print('Press Ctrl+C to stop the recording')
                 print('#' * 80)
-                print(samplerate, device)
+                print(f'Samplerate: {samplerate}, device: {device}')
 
                 rec = vosk.KaldiRecognizer(model, samplerate)
 
