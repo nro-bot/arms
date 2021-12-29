@@ -1,5 +1,3 @@
-NOTE: model folder is for speech recog 
-
 ## HOW TO MOVE ARM (31 Oct 2021)
 
 Use this code
@@ -305,8 +303,8 @@ checkerboard.
 
 See also:
 ```
-nuro_arm.robot.record_movements
-nuro_arm.robot.move_arm_with_gui
+python -m nuro_arm.robot.record_movements
+python -m nuro_arm.robot.move_arm_with_gui
 ```
 
 2B. HARDCODED X THRESHOLDS for separating out slots
@@ -314,3 +312,19 @@ nuro_arm.robot.move_arm_with_gui
 Run inspect_camera_img(), move your cursor around. The x,y of the cursor is
 printed on the bottom of the window.w:w
 
+
+NOTE: Generate text to speech phrases with test_text2speech.py 
+
+NOTE: For tags, print from pdf in this repo, or generate the tags as
+described in read_aruco.py. Tag ID does not matter for hackdemo. 
+We just use the x,y (image coords) of the tags.
+However, if you want x,y,z (camera lens as origin) coords, must know tag
+size. See read_aruco.py TAGSIZE variable. The tags show up in inkscape as 15mm, printed
+out and measured as 11mm. (The camera matrix, distortion matrix in there
+are from some random webcam, works well enough for other webcam if xyz
+accuracy not critical)
+
+
+NOTE: To see what the sampled rgions are like. see find_cube_color.py. Or
+annotated_screencap in current directory -- small blue square shows where
+we're sampling to determine cube color.
