@@ -1,3 +1,4 @@
+from typing import List
 import numpy as np
 import pyrealsense2 as rs
 import cv2
@@ -6,7 +7,7 @@ import tkinter as tk
 from PIL import ImageTk, Image
 
 
-def realse_frame_to_numpy(frame):
+def realse_frame_to_numpy(frame) -> (np.ndarray, np.ndarray):
 
     depth_frame = frame.get_depth_frame()
     color_frame = frame.get_color_frame()
@@ -250,3 +251,11 @@ class VideoPopup(Popup):
         self.img_canvas.itemconfigure(self.img_on_canvas, image=img)
         self.img_canvas.image = img
         self.root.after(100, self.update_image)
+
+
+def sample_points_in_workspace(workspace, num_rows_cols=5) -> np.ndarray:
+
+    rows = np.linspace(workspace[0, 0], workspace[0, 1], num_rows_cols)
+    cols = np.linspace(workspace[1, 0], workspace[1, 1], num_rows_cols)
+
+    return np.array([[xx, yy] for xx in rows for yy in cols], dtype=np.float32)

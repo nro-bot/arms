@@ -8,3 +8,7 @@ class CheckerboardNotFound(Exception):
 
 class NotCalibratedException(Exception):
     pass
+
+
+class CalibrationFailedException(Exception):
+    pass

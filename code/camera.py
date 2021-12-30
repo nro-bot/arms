@@ -1,7 +1,9 @@
+from typing import Union, List, Tuple, Optional
 import os
 import pickle
 import pyrealsense2 as rs
 import cv2
+from cv2 import aruco
 import numpy as np
 import matplotlib.pyplot as plt
 import utils
@@ -20,6 +22,10 @@ class Camera:
 		self.tvec = None
 		self.world2cam = None
 		self.cam2world = None
+
+		# optional functionality
+		self.aruco_dict = None
+		self.aruco_params = None
 
 	def calibrate(self, show=False):
 
@@ -94,6 +100,13 @@ class Camera:
 
 		self.pipeline.stop()
 
+	def set_calibration(self, tvec, rvec, world2cam, cam2world):
+
+		self.tvec = tvec
+		self.rvec = rvec
+		self.world2cam = world2cam
+		self.cam2world = cam2world
+
 	def save_calibration(self, save_path):
 
 		if self.tvec is None or self.rvec is None or self.cam2world is None or self.world2cam is None:
@@ -129,6 +142,32 @@ class Camera:
 		self.rvec = d["rvec"]
 		self.world2cam = d["world2cam"]
 		self.cam2world = d["cam2world"]
+
+	def setup_aruco(self):
+		# can add more options later
+		self.aruco_dict = aruco.Dictionary_get(aruco.DICT_ARUCO_ORIGINAL)
+		self.aruco_params = aruco.DetectorParameters_create()
+
+	def detect_aruco_markers(self, color_frame: np.ndarray) -> Tuple[Union[np.ndarray, None], Union[np.ndarray, None]]:
+
+		if self.aruco_dict is None or self.aruco_params is None:
+			raise ValueError("Call setup_aruco before detecting markers.")
+
+		gray = cv2.cvtColor(color_frame, cv2.COLOR_BGR2GRAY)  # RGB image in numpy/pyplot is a BGR image in OpenCV
+		corners, ids, _ = aruco.detectMarkers(gray, self.aruco_dict, parameters=self.aruco_params)
+
+		if ids is None:
+			return None, None
+
+		corners = corners[0]
+		ids = ids[0]
+
+		# sort ids, convert into numpy array for consistency
+		order = np.argsort(ids)
+		ids = np.array(ids, dtype=np.int32)[order]
+		corners = np.array(corners, dtype=np.int32)[order]
+
+		return ids, corners
 
 	def show_corners_(self, gray_image, corners):
 
