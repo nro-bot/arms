@@ -55,6 +55,9 @@ Click into image to make the robot pick and place things.
 python -m scr.viz.click_move
 ```
 
+Depending on the calibration, z=0 might be above/below the ground. You can change `Z_DOWN` in `constants.py` 
+to make the robot move higher/lower when picking.
+
 ## Other
 
 Run tutorials: `python -m scr.tutorial.1` etc.
