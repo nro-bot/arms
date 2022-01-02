@@ -37,6 +37,8 @@ This will give us the world coordinate space.
 python -m scr.calibrate_camera
 ```
 
+![Example of checkerboard, camera and robot placement.](images/calibration_example.jpg)
+
 Calibrate robot/workspace. You can remove the checkerboard. Click into the displayed image to select where the robot is pointing.
 Try clicking at the point where the tip of the robot's gripper is touching the ground.
 ```
