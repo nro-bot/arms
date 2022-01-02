@@ -8,21 +8,6 @@ from robot.robot_arm import RobotArm
 import utils
 
 
-def draw_workspace(c, cam_points):
-
-    _, img = utils.realse_frame_to_numpy(c.get_frame())
-    cv2.line(img, (int(cam_points[0][0]), int(cam_points[0][1])), (int(cam_points[1][0]), int(cam_points[1][1])),
-             (255, 0, 0), 5)
-    cv2.line(img, (int(cam_points[0][0]), int(cam_points[0][1])), (int(cam_points[2][0]), int(cam_points[2][1])),
-             (255, 0, 0), 5)
-    cv2.line(img, (int(cam_points[1][0]), int(cam_points[1][1])), (int(cam_points[3][0]), int(cam_points[3][1])),
-             (255, 0, 0), 5)
-    cv2.line(img, (int(cam_points[2][0]), int(cam_points[2][1])), (int(cam_points[3][0]), int(cam_points[3][1])),
-             (255, 0, 0), 5)
-
-    return img
-
-
 def main():
 
     c = Camera()
@@ -46,7 +31,8 @@ def main():
     cam_points[:, :2] /= cam_points[:, 2: 3]
     print(cam_points)
 
-    img = draw_workspace(c, cam_points)
+    _, img = utils.realse_frame_to_numpy(c.get_frame())
+    img = utils.draw_workspace(img, cam_points)
     utils.update_opencv_window(img)
 
     r = RobotArm()
@@ -54,7 +40,8 @@ def main():
         print("Moving to", point)
         r.move_hand_to([point[0], point[1], constants.Z_DOWN])
         time.sleep(0.2)
-        img = draw_workspace(c, cam_points)
+        _, img = utils.realse_frame_to_numpy(c.get_frame())
+        img = utils.draw_workspace(img, cam_points)
         cv2.imwrite("data/workspace_{:d}.jpg".format(idx), img)
         utils.update_opencv_window(img)
         time.sleep(1)

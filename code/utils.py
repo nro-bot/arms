@@ -81,6 +81,16 @@ def coord_transform(transform_mtx, pts):
     return new_pts
 
 
+def coord_transform_affine(transform_mtx, pts):
+
+    if len(pts.shape) == 1:
+        pts = pts[None, :]
+
+    homog_pts = np.concatenate([pts, np.ones((len(pts), 1))], axis=1)
+    new_homog_pts = np.dot(transform_mtx, homog_pts.T).T
+    return new_homog_pts
+
+
 def coord_rotate(transform_mtx, pts):
 
     if len(pts.shape) == 1:
@@ -259,3 +269,78 @@ def sample_points_in_workspace(workspace, num_rows_cols=5) -> np.ndarray:
     cols = np.linspace(workspace[1, 0], workspace[1, 1], num_rows_cols)
 
     return np.array([[xx, yy] for xx in rows for yy in cols], dtype=np.float32)
+
+
+def draw_workspace(img, cam_points):
+
+    cv2.line(img, (int(cam_points[0][0]), int(cam_points[0][1])), (int(cam_points[1][0]), int(cam_points[1][1])),
+             (255, 0, 0), 5)
+    cv2.line(img, (int(cam_points[0][0]), int(cam_points[0][1])), (int(cam_points[2][0]), int(cam_points[2][1])),
+             (255, 0, 0), 5)
+    cv2.line(img, (int(cam_points[1][0]), int(cam_points[1][1])), (int(cam_points[3][0]), int(cam_points[3][1])),
+             (255, 0, 0), 5)
+    cv2.line(img, (int(cam_points[2][0]), int(cam_points[2][1])), (int(cam_points[3][0]), int(cam_points[3][1])),
+             (255, 0, 0), 5)
+
+    return img
+
+
+def robot2world_plane(robot_points, robot2world):
+
+    world_points = coord_transform_affine(robot2world, robot_points)
+    world_points = np.concatenate([world_points, np.zeros((len(world_points), 1), dtype=np.float32)], axis=1)
+    return world_points
+
+
+def world2pixels(world_points, world2cam, cam_matrix):
+
+    cam_points = coord_transform(world2cam, world_points)
+    cam_points = np.dot(cam_matrix, cam_points.T).T
+    cam_points[:, :2] /= cam_points[:, 2: 3]
+    return cam_points
+
+
+def robot2world2cam_plane(robot_points, robot2world, world2cam, cam_matrix):
+
+    world_points = robot2world_plane(robot_points, robot2world)
+    cam_points = world2pixels(world_points, world2cam, cam_matrix)
+    return cam_points
+
+
+def pixel_to_cam_unknown_z(u, v, focal_length, principal_points):
+    # arbitrarily place an object 1 m away from camera
+    # we will draw a ray from (0, 0, 0) through this point
+    # then we can intersect it with the ground to get a ground point corresponding to pixel (u, v)
+    z = 1.
+    x = z / focal_length[0] * (u - principal_points[0])
+    y = z / focal_length[1] * (v - principal_points[1])
+    return np.array([x, y, z], dtype=np.float32)
+
+
+def calculate_intersection_with_ground(l, cam2world):
+
+    # unit vector corresponding to the direction of our ray
+    l /= np.sqrt(np.sum(np.square(l)))
+
+    # get the camera position (0, 0, 0) and a unit vector representing a direction
+    # of the ray that hit the pixel of the canvas we selected
+    l0 = np.array([0., 0., 0.], dtype=np.float32)
+
+    # calculate the intersection of the ray (l0 + t * l) and the checkerboard
+    # let's set the origin of the checkerboard to (0, 0, 0) in world coordinates
+    # and its normal to (0, 0, 1)
+    l0 = coord_transform(cam2world, l0)[0]
+    l = coord_rotate(cam2world, l)[0]
+    p0 = np.array([0, 0, 0], dtype=np.float32)
+    n = np.array([0, 0, 1], dtype=np.float32)
+
+    # check for rays that never hit the ground
+    denom = np.dot(n, l)
+    if np.abs(denom) < 1e-6:
+        return None
+
+    t = np.dot((p0 - l0), n) / denom
+    # point on the intersection of our ray and the ground
+    # this is in world space
+    p = l0 + l * t
+    return p

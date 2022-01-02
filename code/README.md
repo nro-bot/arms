@@ -14,9 +14,46 @@ Install dependencies.
 pip install -r requirements.txt
 ```
 
-I have to run `sudo service fwupd stop` every time I want to connect to the robot.
+I have to run 
+```
+sudo service fwupd stop
+``` 
+every time I want to connect to the robot.
 
 # Usage
+
+## Main workflow
+
+You should run scripts from `arms/code`.
+
+Calibrate robot arm. This tells us in which direction the robot arm should be picking.
+```
+python -m scr.calibrate_arm
+```
+
+Calibrate camera. Place a checkerboard so that it is aligned with the robot (i.e. no rotation with respect to the robot base).
+This will give us the world coordinate space.
+```
+python -m scr.calibrate_camera
+```
+
+Calibrate robot/workspace. You can remove the checkerboard. Click into the displayed image to select where the robot is pointing.
+Try clicking at the point where the tip of the robot's gripper is touching the ground.
+```
+python -m scr.calibrate_workspace
+```
+
+Show workspace.
+```
+python -m scr.viz.draw_workspace
+```
+
+Click into image to make the robot pick and place things.
+```
+python -m scr.viz.click_move
+```
+
+## Other
 
 Run tutorials: `python -m scr.tutorial.1` etc.
 
