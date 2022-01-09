@@ -26,6 +26,7 @@ class Camera:
 		# optional functionality
 		self.aruco_dict = None
 		self.aruco_params = None
+		self.align = None
 
 	def calibrate(self, show=False):
 
@@ -88,6 +89,14 @@ class Camera:
 	def get_frame(self):
 
 		return self.pipeline.wait_for_frames()
+
+	def get_aligned_frame(self):
+		# the color and depth sensors will see different parts of the world
+		# this method will align the depth image with the color image
+		# the color image should remain unchanged
+		# call setup alignment first
+		frame = self.pipeline.wait_for_frames()
+		return self.align.process(frame)
 
 	def get_depth_scale(self):
 
@@ -168,6 +177,10 @@ class Camera:
 		corners = np.array(corners, dtype=np.int32)[order]
 
 		return ids, corners
+
+	def setup_alignment(self):
+		# call this before calling get_aligned_frame
+		self.align = utils.setup_color_align()
 
 	def show_corners_(self, gray_image, corners):
 

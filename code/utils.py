@@ -7,6 +7,16 @@ import tkinter as tk
 from PIL import ImageTk, Image
 
 
+def realse_frame(frame):
+
+    depth_frame = frame.get_depth_frame()
+    color_frame = frame.get_color_frame()
+    if not depth_frame or not color_frame:
+        raise NoFrameException()
+
+    return depth_frame, color_frame
+
+
 def realse_frame_to_numpy(frame) -> (np.ndarray, np.ndarray):
 
     depth_frame = frame.get_depth_frame()
