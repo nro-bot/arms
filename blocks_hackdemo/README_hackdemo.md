@@ -284,7 +284,7 @@ There are some hardcoded assumptions.
 
 3A. TO CHANGE HARDCODE:
 to find positions. you can run in ipython
-```
+```python
  from nuro_arm.robot.robot_arm import RobotArm
  import numpy as np
 
@@ -304,7 +304,7 @@ checkerboard.
 See also:
 ```
 python -m nuro_arm.robot.record_movements
-python -m nuro_arm.robot.move_arm_with_gui
+python -m nuro_arm.examples.move_arm_with_gui
 ```
 
 2B. HARDCODED X THRESHOLDS for separating out slots
@@ -328,3 +328,14 @@ accuracy not critical)
 NOTE: To see what the sampled rgions are like. see find_cube_color.py. Or
 annotated_screencap in current directory -- small blue square shows where
 we're sampling to determine cube color.
+
+
+# Nuro Arm library usage notes
+
+Can use simulation mode.
+
+```bash
+senv # start virual env with opencv etc. installed
+
+(v3) 14:45:32 nrw@nrw-l390:~/projects/arms/blocks_hackdemo (main *%)$ python -m nuro_arm.examples.move_arm_with_gui --sim
+```
