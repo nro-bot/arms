@@ -5,6 +5,8 @@ import cv2
 from exceptions import NoFrameException
 import tkinter as tk
 from PIL import ImageTk, Image
+import pyximport; pyximport.install()
+import pyx.render as render
 
 
 def realse_frame(frame):
@@ -354,3 +356,28 @@ def calculate_intersection_with_ground(l, cam2world):
     # this is in world space
     p = l0 + l * t
     return p
+
+
+def project_top_down_depth(world_vertices, workspace, size, vmin, vmax):
+
+    # find valid vertices
+    not_all_zeros = np.any(world_vertices != 0, axis=1)
+    world_vertices = world_vertices[not_all_zeros]
+
+    # find vertices in the workspace
+    mask = np.logical_and(world_vertices[:, 0] >= workspace[0, 0], world_vertices[:, 0] <= workspace[0, 1])
+    mask = np.logical_and(mask, world_vertices[:, 1] >= workspace[1, 0])
+    mask = np.logical_and(mask, world_vertices[:, 1] <= workspace[1, 1])
+
+    # bin points
+    captured_vertices = world_vertices[mask]
+    captured_vertices[:, 0] -= workspace[0, 0]
+    captured_vertices[:, 1] -= workspace[1, 0]
+    captured_vertices[:, 0] /= (workspace[0, 1] - workspace[0, 0])
+    captured_vertices[:, 1] /= (workspace[1, 1] - workspace[1, 0])
+    captured_vertices[:, 0] *= size - 1
+    captured_vertices[:, 1] *= size - 1
+    captured_vertices[:, :2] = np.round(captured_vertices[:, :2])
+
+    # calculate occlusions
+    return render.render(captured_vertices.astype(np.float32), size, size, vmin, vmax)

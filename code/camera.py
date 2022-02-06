@@ -27,6 +27,7 @@ class Camera:
 		self.aruco_dict = None
 		self.aruco_params = None
 		self.align = None
+		self.pc = None
 
 	def calibrate(self, show=False):
 
@@ -97,6 +98,20 @@ class Camera:
 		# call setup alignment first
 		frame = self.pipeline.wait_for_frames()
 		return self.align.process(frame)
+
+	def get_pointcloud(self):
+		# get pointcloud in the color camera frame
+		depth_frame, color_frame = utils.realse_frame(self.get_frame())
+		points = self.pc.calculate(depth_frame)
+		self.pc.map_to(color_frame)
+
+		# turn a structured array into a normal array
+		tmp = np.asanyarray(points.get_vertices())
+		cam_vertices = np.zeros((len(tmp), 3), dtype=np.float32)
+		cam_vertices[:, 0] = tmp["f0"]
+		cam_vertices[:, 1] = tmp["f1"]
+		cam_vertices[:, 2] = tmp["f2"]
+		return cam_vertices
 
 	def get_depth_scale(self):
 
@@ -190,3 +205,7 @@ class Camera:
 			utils.draw_square(img, x, y, square_size=6)
 		plt.imshow(img)
 		plt.show()
+
+	def setup_pointcloud(self):
+
+		self.pc = rs.pointcloud()

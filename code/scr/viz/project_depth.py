@@ -1,68 +1,56 @@
-import argparse
+import pickle
+import time
 import numpy as np
-import matplotlib.pyplot as plt
-import pyrealsense2 as rs
 from camera import Camera
 import utils
+import constants
 import paths
+import pyximport; pyximport.install()  # this will compile cython code
+import pyx.render as render
+
+IMAGE_SIZE = 500
+MIN_VALUE = 0  # 0 = on the ground
+MAX_VALUE = 0.03  # 0.05 = 5cm above the ground
 
 
 def main():
-
+    # setup camera
     c = Camera()
     c.start()
     c.load_calibration(paths.DEFAULT_CALIBRATION_PATH)
+    c.setup_pointcloud()
 
-    pc = rs.pointcloud()
+    # this tells us the robot's workspace
+    # we only want to show objects inside of the workspace
+    with open(paths.DEFAULT_WORKSPACE_CALIBRATION_PATH, "rb") as f:
+        d = pickle.load(f)
+    robot2world = d["robot2world"]
+    world2robot = d["world2robot"]
 
-    # TODO: this should eventually be the robot's workspace
-    # I'm testing this only with the camera, so I use some arbitrary values
-    workspace = np.array([
-        [-0.2, 0.2],
-        [-0.2, 0.2]
+    # TODO: here we assume the camera and robot frame aren't rotated w.r.t. each other
+    robot_points = np.array([
+        [constants.WORKSPACE[0, 0], constants.WORKSPACE[1, 0]],
+        [constants.WORKSPACE[0, 1], constants.WORKSPACE[1, 1]]
     ], dtype=np.float32)
+    workspace = utils.robot2world_plane(robot_points, robot2world)
+    workspace = np.array([
+        [workspace[0, 0], workspace[1, 0]],
+        [workspace[1, 1], workspace[0, 1]]  # TODO: not sure what's going on here
+    ])
+    # workspace = np.array([
+    #     [-0.2, 0.2],
+    #     [-0.2, 0.2]
+    # ], dtype=np.float32)
 
+    # render top-down depth images inside of the robot's workspace
     while True:
 
-        # create a point cloud
-        depth_frame, color_frame = utils.realse_frame(c.get_frame())
-        points = pc.calculate(depth_frame)
-        pc.map_to(color_frame)
-
-        tmp = np.asanyarray(points.get_vertices())
-        cam_vertices = np.zeros((len(tmp), 3), dtype=np.float32)
-        for i, t in enumerate(tmp):
-            cam_vertices[i][0] = t[0]
-            cam_vertices[i][1] = t[1]
-            cam_vertices[i][2] = t[2]
-
+        cam_vertices = c.get_pointcloud()
         world_vertices = utils.coord_transform(c.cam2world, cam_vertices)
-
-        not_all_zeros = np.any(world_vertices != 0, axis=1)
-        world_vertices = world_vertices[not_all_zeros]
-
-        mask = np.logical_and(world_vertices[:, 0] >= workspace[0, 0], world_vertices[:, 0] <= workspace[0, 1])
-        mask = np.logical_and(mask, world_vertices[:, 1] >= workspace[1, 0])
-        mask = np.logical_and(mask, world_vertices[:, 1] <= workspace[1, 1])
-
-        print(world_vertices[:, 2].min(), world_vertices[:, 2].max(), world_vertices[:, 2].mean())
-
-        captured_vertices = world_vertices[mask]
-        captured_vertices[:, 0] -= workspace[0, 0]
-        captured_vertices[:, 1] -= workspace[1, 0]
-        captured_vertices[:, 0] /= (workspace[0, 1] - workspace[0, 0])
-        captured_vertices[:, 1] /= (workspace[1, 1] - workspace[1, 0])
-        captured_vertices[:, 0] *= 99
-        captured_vertices[:, 1] *= 99
-        captured_vertices[:, :2] = np.round(captured_vertices[:, :2])
-
-        image = np.zeros((100, 100), dtype=np.float32) - 100.
-        for v in captured_vertices:
-            x, y = int(v[0]), int(v[1])
-            image[x, y] = max(image[x, y], v[2])
-        image = np.clip(image, 0, 0.1)
-        plt.imshow(image)
-        plt.pause(0.01)
+        depth = utils.project_top_down_depth(world_vertices, workspace, IMAGE_SIZE, MIN_VALUE, MAX_VALUE)
+        image = ((depth / MAX_VALUE) * 255).astype(np.uint8)
+        utils.update_opencv_window(image)
+        time.sleep(1 / 30)
 
 
 main()
