@@ -10,6 +10,7 @@ def main(args):
 
     c = Camera()
     c.start()
+    c.setup_alignment()
 
     color_image = None
     depth_image = None
@@ -56,7 +57,7 @@ def main(args):
         while True:
 
             # Wait for a coherent pair of frames: depth and color
-            depth_image, color_image = utils.realse_frame_to_numpy(c.get_frame())
+            depth_image, color_image = utils.realse_frame_to_numpy(c.get_aligned_frame())
             depth_colormap = utils.depth_image_to_colormap(depth_image)
             images = np.hstack((color_image, depth_colormap))
 

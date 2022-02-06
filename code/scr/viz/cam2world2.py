@@ -20,8 +20,6 @@ def main(args):
         except FileNotFoundError:
             print("Run 'python -m scr.calibrate' first.")
 
-        cam2world = c.cam2world
-
         def click_cam2world(event, x, y, flags, param):
 
             if event != cv2.EVENT_LBUTTONDOWN:
@@ -29,35 +27,13 @@ def main(args):
 
             print("Canvas space (x, y): ({:.4f}, {:.4f}) px.".format(y, x))
 
-            # let's assume that we don't have a depth camera => we don't know how fare away from
-            # camera the selected point is
-            # simply set z to 1
-            z = 1.
-            x = z / c.focal_length[0] * (x - c.principal_points[0])
-            y = z / c.focal_length[1] * (y - c.principal_points[1])
+            l = utils.pixel_to_cam_unknown_z(x, y, c.focal_length, c.principal_points)
+            p = utils.calculate_intersection_with_ground(l, c.cam2world)
 
-            # get the camera position (0, 0, 0) and a unit vector representing a direction
-            # of the ray that hit the pixel of the canvas we selected
-            l0 = np.array([0., 0., 0.], dtype=np.float32)
-            l = np.array([x, y, z], dtype=np.float32)
-            l /= np.sqrt(np.sum(np.square(l)))
-
-            # calculate the intersection of the ray (l0 + t * l) and the checkerboard
-            # let's set the origin of the checkerboard to (0, 0, 0) in world coordinates
-            # and its normal to (0, 0, 1)
-            l0 = utils.coord_transform(cam2world, l0)[0]
-            l = utils.coord_rotate(cam2world, l)[0]
-            p0 = np.array([0, 0, 0], dtype=np.float32)
-            n = np.array([0, 0, 1], dtype=np.float32)
-
-            # check for rays that never hit the ground
-            denom = np.dot(n, l)
-            if np.abs(denom) < 1e-6:
-                print("Ray does not intersection checkerboard.")
+            if p is None:
+                # no intersection with ground
+                print("Ray does not intersect ground.")
                 return
-
-            t = np.dot((p0 - l0), n) / denom
-            p = l0 + l * t
 
             # p is the intersection of the ray and the checkerboard
             print("World space (x, y, z): ({:.4f}, {:.4f}, {:.4f}) m.".format(p[0], p[1], p[2]))

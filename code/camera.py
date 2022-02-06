@@ -1,7 +1,9 @@
+from typing import Union, List, Tuple, Optional
 import os
 import pickle
 import pyrealsense2 as rs
 import cv2
+from cv2 import aruco
 import numpy as np
 import matplotlib.pyplot as plt
 import utils
@@ -20,6 +22,11 @@ class Camera:
 		self.tvec = None
 		self.world2cam = None
 		self.cam2world = None
+
+		# optional functionality
+		self.aruco_dict = None
+		self.aruco_params = None
+		self.align = None
 
 	def calibrate(self, show=False):
 
@@ -83,6 +90,14 @@ class Camera:
 
 		return self.pipeline.wait_for_frames()
 
+	def get_aligned_frame(self):
+		# the color and depth sensors will see different parts of the world
+		# this method will align the depth image with the color image
+		# the color image should remain unchanged
+		# call setup alignment first
+		frame = self.pipeline.wait_for_frames()
+		return self.align.process(frame)
+
 	def get_depth_scale(self):
 
 		return self.profile\
@@ -93,6 +108,13 @@ class Camera:
 	def stop(self):
 
 		self.pipeline.stop()
+
+	def set_calibration(self, tvec, rvec, world2cam, cam2world):
+
+		self.tvec = tvec
+		self.rvec = rvec
+		self.world2cam = world2cam
+		self.cam2world = cam2world
 
 	def save_calibration(self, save_path):
 
@@ -129,6 +151,36 @@ class Camera:
 		self.rvec = d["rvec"]
 		self.world2cam = d["world2cam"]
 		self.cam2world = d["cam2world"]
+
+	def setup_aruco(self):
+		# can add more options later
+		self.aruco_dict = aruco.Dictionary_get(aruco.DICT_ARUCO_ORIGINAL)
+		self.aruco_params = aruco.DetectorParameters_create()
+
+	def detect_aruco_markers(self, color_frame: np.ndarray) -> Tuple[Union[np.ndarray, None], Union[np.ndarray, None]]:
+
+		if self.aruco_dict is None or self.aruco_params is None:
+			raise ValueError("Call setup_aruco before detecting markers.")
+
+		gray = cv2.cvtColor(color_frame, cv2.COLOR_BGR2GRAY)  # RGB image in numpy/pyplot is a BGR image in OpenCV
+		corners, ids, _ = aruco.detectMarkers(gray, self.aruco_dict, parameters=self.aruco_params)
+
+		if ids is None:
+			return None, None
+
+		corners = corners[0]
+		ids = ids[0]
+
+		# sort ids, convert into numpy array for consistency
+		order = np.argsort(ids)
+		ids = np.array(ids, dtype=np.int32)[order]
+		corners = np.array(corners, dtype=np.int32)[order]
+
+		return ids, corners
+
+	def setup_alignment(self):
+		# call this before calling get_aligned_frame
+		self.align = utils.setup_color_align()
 
 	def show_corners_(self, gray_image, corners):
 
