@@ -5,6 +5,7 @@ import cv2
 from exceptions import NoFrameException
 import tkinter as tk
 from PIL import ImageTk, Image
+import open3d as o3d
 import pyximport; pyximport.install()
 import pyx.render as render
 
@@ -381,3 +382,16 @@ def project_top_down_depth(world_vertices, workspace, size, vmin, vmax):
 
     # calculate occlusions
     return render.render(captured_vertices.astype(np.float32), size, size, vmin, vmax)
+
+
+def bgr_to_rgb(image):
+
+    return np.stack([image[:, :, 2], image[:, :, 1], image[:, :, 0]], axis=-1)
+
+
+def create_open3d_pointcloud(vertices, colors):
+
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(vertices)
+    pcd.colors = o3d.utility.Vector3dVector(colors)
+    return pcd

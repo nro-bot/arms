@@ -1,7 +1,9 @@
 from typing import Union, List, Tuple, Optional
 import os
 import pickle
+import time
 import pyrealsense2 as rs
+import open3d as o3d
 import cv2
 from cv2 import aruco
 import numpy as np
@@ -102,16 +104,59 @@ class Camera:
 	def get_pointcloud(self):
 		# get pointcloud in the color camera frame
 		depth_frame, color_frame = utils.realse_frame(self.get_frame())
-		points = self.pc.calculate(depth_frame)
 		self.pc.map_to(color_frame)
+		points = self.pc.calculate(depth_frame)
 
 		# turn a structured array into a normal array
 		tmp = np.asanyarray(points.get_vertices())
-		cam_vertices = np.zeros((len(tmp), 3), dtype=np.float32)
-		cam_vertices[:, 0] = tmp["f0"]
-		cam_vertices[:, 1] = tmp["f1"]
-		cam_vertices[:, 2] = tmp["f2"]
-		return cam_vertices
+		return np.asanyarray(tmp).view(np.float32).reshape(-1, 3)  # xyz
+
+	def get_pointcloud_and_texture(self):
+		# get pointcloud in the color camera frame
+		depth_frame, color_frame = utils.realse_frame(self.get_frame())
+		# map to has to be called before, not after calculating the points!!!
+		# the tutorial was wrong
+		self.pc.map_to(color_frame)
+		points = self.pc.calculate(depth_frame)
+
+		# turn a structured array into a normal array
+		v, t = points.get_vertices(), points.get_texture_coordinates()
+		verts = np.asanyarray(v).view(np.float32).reshape(-1, 3)  # xyz
+		texcoords = np.asanyarray(t).view(np.float32).reshape(-1, 2)  # uv
+		return verts, texcoords, np.asanyarray(color_frame.get_data())
+
+	def get_pointcloud_open3d(self, return_raw=False):
+
+		cam_vertices, cam_texture, image = self.get_pointcloud_and_texture()
+
+		# not sure if this is because of realsense or open3d
+		image = utils.bgr_to_rgb(image)
+
+		# (width, height) => (height, width)
+		cam_texture = np.stack([cam_texture[:, 1], cam_texture[:, 0]], axis=-1)
+		cam_texture = cam_texture * (image.shape[0], image.shape[1]) + 0.5
+		cam_texture = cam_texture.astype(np.uint32)
+		u, v = cam_texture[:, 0], cam_texture[:, 1]
+
+		# some depth pixels are outside of the rgb image
+		mask = np.logical_and(
+			np.logical_and(0 <= u, u <= image.shape[0] - 1),
+			np.logical_and(0 <= v, v <= image.shape[1] - 1)
+		)
+		mask = np.logical_not(mask)
+		u = np.clip(u, 0, image.shape[0] - 1)
+		v = np.clip(v, 0, image.shape[1] - 1)
+
+		# open3d expects 0 - 1 image, realsense returns 0 - 255
+		colors = image[u, v] / 255.
+		colors[mask] = 0.
+
+		if return_raw:
+			# return data we can pass into open3d
+			return cam_vertices, colors
+		else:
+			# create an open3d pointcloud
+			return utils.create_open3d_pointcloud(cam_vertices, colors)
 
 	def get_depth_scale(self):
 
@@ -209,3 +254,6 @@ class Camera:
 	def setup_pointcloud(self):
 
 		self.pc = rs.pointcloud()
+		# the first frame is always weird
+		self.get_pointcloud_and_texture()
+		time.sleep(1)
