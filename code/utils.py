@@ -389,9 +389,10 @@ def bgr_to_rgb(image):
     return np.stack([image[:, :, 2], image[:, :, 1], image[:, :, 0]], axis=-1)
 
 
-def create_open3d_pointcloud(vertices, colors):
+def create_open3d_pointcloud(vertices, colors=None):
 
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(vertices)
-    pcd.colors = o3d.utility.Vector3dVector(colors)
+    if colors is not None:
+        pcd.colors = o3d.utility.Vector3dVector(colors)
     return pcd
