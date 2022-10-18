@@ -3,11 +3,12 @@ import pyrealsense2 as rs
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
+import open3d as o3d
 import torch
 from torchvision.models import detection
-from torchvision.utils import draw_segmentation_masks
+# from torchvision.utils import draw_segmentation_masks
 from camera import Camera
-from mask_rcnn_utils import display_instances, coco_class_names
+import mask_rcnn_utils
 
 
 def main(args):
@@ -20,6 +21,7 @@ def main(args):
     # setup camera
     c = Camera()
     c.start()
+    c.setup_pointcloud()
 
     fig = plt.figure()
 
@@ -29,14 +31,7 @@ def main(args):
             plt.clf()
             ax = fig.gca()
 
-            frames = c.get_frame()
-
-            color_frame = frames.get_color_frame()
-            if not color_frame:
-                continue
-
-            # Convert images to numpy arrays
-            color_image = np.asanyarray(color_frame.get_data())
+            pc, tex, color_image = c.get_pointcloud_and_texture()
 
             # Important! OpenCV uses BGR.
             color_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)
@@ -73,8 +68,28 @@ def main(args):
             masks = masks.transpose((1, 2, 0))
             masks = (masks > args.mask_threshold).astype(np.int32)
 
-            display_instances(color_image, boxes, masks, labels, coco_class_names, scores=scores, show_bbox=False, ax=ax)
-            plt.pause(0.1)
+            n_objects = len(scores)
+            total_mask = np.zeros_like(masks[:, :, 0], dtype=np.bool)
+            colors = mask_rcnn_utils.random_colors(n_objects)
+
+            for i in range(n_objects):
+
+                color_image = mask_rcnn_utils.apply_mask(color_image, masks[:, :, i], colors[i], alpha=1)
+                total_mask += masks[:, :, i].astype(np.bool)
+
+            print(tex)
+
+            plt.subplot(1, 2, 1)
+            plt.imshow(color_image)
+            plt.subplot(1, 2, 2)
+            plt.imshow(total_mask)
+            plt.show()
+
+            total_mask = total_mask.transpose().reshape(-1)
+
+            color_image = cv2.cvtColor(color_image, cv2.COLOR_RGB2BGR)
+            pcd = c.get_pointcloud_open3d(cam_vertices=pc[total_mask], cam_texture=tex[total_mask], image=color_image)
+            o3d.visualization.draw_geometries_with_editing([pcd])
 
     finally:
 
