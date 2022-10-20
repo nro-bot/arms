@@ -6,6 +6,7 @@ from exceptions import NoFrameException
 import tkinter as tk
 from PIL import ImageTk, Image
 import open3d as o3d
+from scipy.spatial.transform import Rotation
 import pyximport; pyximport.install()
 import pyx.render as render
 
@@ -424,3 +425,9 @@ def tex_coords_to_u_v_mask(tex: np.ndarray, color_image: np.ndarray) -> Tuple[np
 
     # open3d expects 0 - 1 image, realsense returns 0 - 255
     # colors = color_image[u, v] / 255.
+
+
+def rotate_for_open3d(pc):
+    # Going from realsense to open3d, the point cloud will be upside down and rotated opposite to the camera angle.
+    mat = Rotation.from_euler("zyx", (np.pi, np.pi, 0.)).as_matrix()
+    return np.matmul(pc, mat)

@@ -133,7 +133,7 @@ def main(args):
                 if not flag:
                     # processing failed (probably didn't find objects in the image)
                     break
-                utils.update_open3d_pointcloud(pcd, pc, colors)
+                utils.update_open3d_pointcloud(pcd, utils.rotate_for_open3d(pc), colors)
                 if not pcd_added:
                     # first time showing a point cloud
                     vis.add_geometry(pcd)
