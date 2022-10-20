@@ -13,7 +13,8 @@ from mask_rcnn_utils import display_instances, coco_class_names
 def main(args):
 
     # setup mask r-cnn
-    torch_device = torch.device("cpu")
+
+    torch_device = torch.device("cuda:0")
     model = detection.maskrcnn_resnet50_fpn(pretrained=True).to(torch_device)
     model.eval()
 
