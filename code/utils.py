@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional, Tuple
 import numpy as np
 import pyrealsense2 as rs
 import cv2
@@ -6,6 +6,7 @@ from exceptions import NoFrameException
 import tkinter as tk
 from PIL import ImageTk, Image
 import open3d as o3d
+from scipy.spatial.transform import Rotation
 import pyximport; pyximport.install()
 import pyx.render as render
 
@@ -389,10 +390,44 @@ def bgr_to_rgb(image):
     return np.stack([image[:, :, 2], image[:, :, 1], image[:, :, 0]], axis=-1)
 
 
-def create_open3d_pointcloud(vertices, colors=None):
+def create_open3d_pointcloud(vertices: np.ndarray, colors: Optional[np.ndarray]=None):
 
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(vertices)
     if colors is not None:
         pcd.colors = o3d.utility.Vector3dVector(colors)
     return pcd
+
+
+def update_open3d_pointcloud(pcd, vertices: np.ndarray, colors: Optional[np.ndarray]=None):
+
+    pcd.points = o3d.utility.Vector3dVector(vertices)
+    if colors is not None:
+        pcd.colors = o3d.utility.Vector3dVector(colors)
+
+
+def tex_coords_to_u_v_mask(tex: np.ndarray, color_image: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+
+    cam_texture = np.stack([tex[:, 1], tex[:, 0]], axis=-1)
+    cam_texture = cam_texture * (color_image.shape[0], color_image.shape[1]) + 0.5
+    cam_texture = cam_texture.astype(np.uint32)
+    u, v = cam_texture[:, 0], cam_texture[:, 1]
+
+    mask = np.logical_and(
+        np.logical_and(0 <= u, u <= color_image.shape[0] - 1),
+        np.logical_and(0 <= v, v <= color_image.shape[1] - 1)
+    )
+    # mask = np.logical_not(mask)
+    u = np.clip(u, 0, color_image.shape[0] - 1)
+    v = np.clip(v, 0, color_image.shape[1] - 1)
+
+    return u, v, mask
+
+    # open3d expects 0 - 1 image, realsense returns 0 - 255
+    # colors = color_image[u, v] / 255.
+
+
+def rotate_for_open3d(pc):
+    # Going from realsense to open3d, the point cloud will be upside down and rotated opposite to the camera angle.
+    mat = Rotation.from_euler("zyx", (np.pi, np.pi, 0.)).as_matrix()
+    return np.matmul(pc, mat)

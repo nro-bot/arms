@@ -1,5 +1,7 @@
 import argparse
+from optparse import Option
 import time
+from pyparsing import Opt
 import pyrealsense2 as rs
 import numpy as np
 import matplotlib.pyplot as plt
@@ -15,9 +17,7 @@ import mask_rcnn_utils
 import utils
 
 
-def run_perception(camera, model, torch_device, object_threshold, mask_threshold, pcd, dirty, lock):
-
-    pc, tex, color_image = camera.get_pointcloud_and_texture()
+def perception_on_point_cloud(model, torch_device, object_threshold, mask_threshold, pc, tex, color_image):
 
     # Important! OpenCV uses BGR.
     color_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)
@@ -31,13 +31,7 @@ def run_perception(camera, model, torch_device, object_threshold, mask_threshold
         segm_d[key] = value.cpu()
 
     if len(segm_d["labels"]) == 0:
-        return
-
-    # I would need to filter by instances here. Doesn't display class labels.
-    # segm = segm_d["masks"][:, 0]
-    # images = draw_segmentation_masks((image_pt[0].cpu() * 255).type(torch.uint8), segm.cpu() > 0.5)
-    # images = images.permute((1, 2, 0))
-    # images = images.cpu().numpy()
+        return None, None, False
 
     boxes = segm_d["boxes"].numpy()
     masks = segm_d["masks"][:, 0].numpy()
@@ -47,7 +41,7 @@ def run_perception(camera, model, torch_device, object_threshold, mask_threshold
     m = scores > object_threshold
 
     if np.sum(m) == 0:
-        return
+        return None, None, False
 
     boxes = boxes[m]
     masks = masks[m]
@@ -66,37 +60,33 @@ def run_perception(camera, model, torch_device, object_threshold, mask_threshold
         color_image = mask_rcnn_utils.apply_mask(color_image, masks[:, :, i], colors[i], alpha=0.2)
         total_mask += masks[:, :, i].astype(np.bool)
 
-    cam_texture = np.stack([tex[:, 1], tex[:, 0]], axis=-1)
-    cam_texture = cam_texture * (color_image.shape[0], color_image.shape[1]) + 0.5
-    cam_texture = cam_texture.astype(np.uint32)
-    u, v = cam_texture[:, 0], cam_texture[:, 1]
+    u, v, mask1 = utils.tex_coords_to_u_v_mask(tex, color_image)
 
-    mask = np.logical_and(
-        np.logical_and(0 <= u, u <= color_image.shape[0] - 1),
-        np.logical_and(0 <= v, v <= color_image.shape[1] - 1)
-    )
-    mask = np.logical_not(mask)
-    u = np.clip(u, 0, color_image.shape[0] - 1)
-    v = np.clip(v, 0, color_image.shape[1] - 1)
-
-    # open3d expects 0 - 1 image, realsense returns 0 - 255
     colors = color_image[u, v] / 255.
-    colors[mask] = 0.
+    mask2 = total_mask[u, v]
 
-    segm_mask = total_mask[u, v]
-    # plt.subplot(1, 2, 1)
-    # plt.imshow(color_image)
-    # plt.subplot(1, 2, 2)
-    # plt.imshow(total_mask)
-    # plt.show()
+    pc = pc[mask1]
+    colors = colors[mask1]
+    mask2 = mask2[mask1]
 
-    print("y")
-    lock.acquire(blocking=True)
-    pcd.points = o3d.utility.Vector3dVector(pc[segm_mask])
-    pcd.colors = o3d.utility.Vector3dVector(colors[segm_mask])
-    dirty.set()
-    lock.release()
-    print("z")
+    pc = pc[mask2]
+    colors = colors[mask2]
+
+    return pc, colors, True
+
+
+def run_perception(input_queue, output_queue, args):
+
+    while True:
+
+        item = input_queue.get()
+
+        if item is None:
+            break
+
+        out = perception_on_point_cloud(*args, *item)
+
+        output_queue.put(out)
 
 
 def main(args):
@@ -107,57 +97,67 @@ def main(args):
     model.eval()
 
     # setup camera
-    c = Camera()
-    c.start()
-    c.setup_pointcloud()
+    camera = Camera()
+    camera.start()
+    camera.setup_pointcloud()
 
     # setup point cloud
     pcd = o3d.geometry.PointCloud()
+    pcd_added = False
 
     # setup vis
     vis = o3d.visualization.Visualizer()
     vis.create_window()
-    vis.add_geometry(pcd)
-    vis.update_renderer()
 
-    lock = Lock()
-    dirty = Event()
-
-    i = 0
-
-    # start worker thread
-    # t = Thread(target=run_perception, args=(c, model, torch_device, args.object_threshold, args.mask_threshold, vis, pcd, dirty, lock))
-    # t.start()
+    # setup a thread for Mask R-CNN
+    input_queue = queue.Queue()
+    output_queue = queue.Queue()
+    t = Thread(target=run_perception, args=(input_queue, output_queue, (model, torch_device, args.object_threshold, args.mask_threshold)))
+    t.start()
 
     # update vis
-    while True:
+    close = False
+    while not close:
 
-        run_perception(c, model, torch_device, args.object_threshold, args.mask_threshold, pcd, dirty, lock)
-        print("x")
+        # get a frame and send it for processing
+        frame = camera.get_pointcloud_and_texture()
+        input_queue.put(frame)
+        
+        # update the visualization while we wait
+        while not close:
 
-        lock.acquire(blocking=True)
+            if not output_queue.empty():
+                # update point cloud, get new frame
+                item = output_queue.get()
+                pc, colors, flag = item
+                if not flag:
+                    # processing failed (probably didn't find objects in the image)
+                    break
+                utils.update_open3d_pointcloud(pcd, utils.rotate_for_open3d(pc), colors)
+                if not pcd_added:
+                    # first time showing a point cloud
+                    vis.add_geometry(pcd)
+                    pcd_added = True
+                else:
+                    vis.update_geometry(pcd)
+                break
 
-        if dirty.is_set():
-            print("zz")
-            if i == 0:
-                vis.remove_geometry(pcd)
-                vis.add_geometry(pcd)
-            else:
-                vis.update_geometry(pcd)
-            dirty.clear()
-            i += 1
+            vis.update_renderer()
+            close = close or (not vis.poll_events())
 
-        vis.update_renderer()
-        close = vis.poll_events()
-        lock.release()
-
-        if not close:
-            break
-
-        time.sleep(1 / 30)
+            time.sleep(1 / 30)
 
     # clean-up
-    c.stop()
+    # wait for Mask R-CNN to process the last frame
+    while not input_queue.empty():
+        time.sleep(0.1)
+    # get the result
+    while not output_queue.empty():
+        output_queue.get()
+    # send a stop signal
+    input_queue.put(None)
+    t.join()
+    camera.stop()
     vis.destroy_window()
 
 
