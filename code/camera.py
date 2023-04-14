@@ -111,9 +111,11 @@ class Camera:
 		tmp = np.asanyarray(points.get_vertices())
 		return np.asanyarray(tmp).view(np.float32).reshape(-1, 3)  # xyz
 
-	def get_pointcloud_and_texture(self):
+	def get_pointcloud_and_texture(self, frame=None):
+		if frame is None:
+			frame = self.get_frame()
 		# get pointcloud in the color camera frame
-		depth_frame, color_frame = utils.realse_frame(self.get_frame())
+		depth_frame, color_frame = utils.realse_frame(frame)
 		# map to has to be called before, not after calculating the points!!!
 		# the tutorial was wrong
 		self.pc.map_to(color_frame)
