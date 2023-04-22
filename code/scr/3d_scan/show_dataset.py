@@ -23,8 +23,8 @@ def main(args):
         plt.imshow(data[i]["depths"] / np.max(data[i]["depths"]))
         plt.show()
 
-        # pcd = utils.create_open3d_pointcloud(pcd.astype(np.float32))
-        # o3d.visualization.draw_geometries_with_editing([pcd])
+        pcd = utils.create_open3d_pointcloud(pcd.astype(np.float32))
+        o3d.visualization.draw_geometries_with_editing([pcd])
 
         # Showing ordered point cloud.
         # pcd = data[i]["clouds"][0]

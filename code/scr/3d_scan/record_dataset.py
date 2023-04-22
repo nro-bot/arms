@@ -4,7 +4,7 @@ import pyrealsense2 as rs
 import numpy as np
 import cv2
 from camera import Camera
-import utils
+import paths, utils
 
 
 def main(args):
@@ -12,6 +12,9 @@ def main(args):
     c = Camera()
     c.start()
     c.setup_pointcloud()
+
+    if args.transform:
+        c.load_calibration(paths.DEFAULT_CALIBRATION_PATH)
 
     try:
         data = []
@@ -23,6 +26,10 @@ def main(args):
             frames = c.get_frame()
             depth_image, color_image = utils.realse_frame_to_numpy(frames)
             vertx, texcoords, _ = c.get_pointcloud_and_texture(frame=frames)
+
+            if args.transform:
+                vertx = utils.coord_transform(c.cam2world, vertx)
+                print(c.cam2world)
 
             d = {
                 "depths": depth_image,
@@ -44,4 +51,5 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Find objects for a particular task.")
     parser.add_argument("save_file")
+    parser.add_argument("-t", "--transform", default=False, action="store_true")
     main(parser.parse_args())
