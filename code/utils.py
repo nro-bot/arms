@@ -7,8 +7,8 @@ import tkinter as tk
 from PIL import ImageTk, Image
 import open3d as o3d
 from scipy.spatial.transform import Rotation
-import pyximport; pyximport.install()
-import pyx.render as render
+# import pyximport; pyximport.install()
+# import pyx.render as render
 
 
 def realse_frame(frame):
